@@ -1,4 +1,4 @@
-using JuAFEM, SparseArrays, LinearAlgebra, Printf
+using Ferrite, SparseArrays, LinearAlgebra, Printf
 
 struct J2Plasticity{T, S <: SymmetricTensor{4, 3, T}}
     G::T  # Shear modulus
@@ -264,7 +264,7 @@ function solve()
             end
             K, r = doassemble(cellvalues, facevalues, K, grid, dh, material, u,
                              states, traction);
-            norm_r = norm(r[JuAFEM.free_dofs(dbcs)])
+            norm_r = norm(r[Ferrite.free_dofs(dbcs)])
 
             print("Iteration: $newton_itr \tresidual: $(@sprintf("%.8f", norm_r))\n")
             if norm_r < NEWTON_TOL
