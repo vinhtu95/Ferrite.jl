@@ -199,22 +199,22 @@ end</code></pre><pre class="documenter-example-output">solve (generic function w
   iter:  2[K[A
 [K[ASolving: (thresh = 1e-08, value = 0.000329859)[K
   iter:  3[K[A
-[K[ASolving: (thresh = 1e-08, value = 1.92987e-07)[K
+[K[ASolving: (thresh = 1e-08, value = 1.92988e-07)[K
   iter:  4[K[A
-[K[ASolving: Time: 0:00:00 (6 iterations)[K
+[K[ASolving: Time: 0:00:01 (6 iterations)[K
   iter:  5[K
  ------------------------------------------------------------------------------
   Analysis with 6000 elements          Time                   Allocations
                                ----------------------   -----------------------
-       Tot / % measured:            1.14s / 76.3%            343MiB / 79.1%
+       Tot / % measured:            1.54s / 81.4%            343MiB / 79.1%
 
  Section               ncalls     time   %tot     avg     alloc   %tot      avg
  ------------------------------------------------------------------------------
- assemble                   6    684ms  78.7%   114ms    266MiB  98.0%  44.3MiB
-   element assemble     36.0k    640ms  73.6%  17.8μs    259MiB  95.3%  7.36KiB
- linear solve (Iter...      5    115ms  13.2%  23.0ms    474KiB  0.17%  94.8KiB
- export                     1   38.1ms  4.38%  38.1ms   4.42MiB  1.63%  4.42MiB
- linear solve (Kryl...      5   32.7ms  3.76%  6.55ms    669KiB  0.24%   134KiB
+ assemble                   6    1.03s  81.8%   171ms    266MiB  98.0%  44.3MiB
+   element assemble     36.0k    955ms  76.0%  26.5μs    259MiB  95.3%  7.36KiB
+ linear solve (Iter...      5    155ms  12.3%  30.9ms    474KiB  0.17%  94.8KiB
+ linear solve (Kryl...      5   41.3ms  3.29%  8.26ms    669KiB  0.24%   134KiB
+ export                     1   32.9ms  2.62%  32.9ms   4.42MiB  1.63%  4.42MiB
  ------------------------------------------------------------------------------</pre><h2 id="Plain-Program"><a class="docs-heading-anchor" href="#Plain-Program">Plain Program</a><a id="Plain-Program-1"></a><a class="docs-heading-anchor-permalink" href="#Plain-Program" title="Permalink"></a></h2><p>Below follows a version of the program without any comments. The file is also available here: <a href="../hyperelasticity.jl">hyperelasticity.jl</a></p><pre><code class="language-julia">using Ferrite, Tensors, TimerOutputs, ProgressMeter
 import KrylovMethods, IterativeSolvers
 
