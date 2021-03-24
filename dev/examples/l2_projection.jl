@@ -25,9 +25,9 @@ end
 
 q = compute_heat_fluxes(cellvalues, dh, u);
 
-projector = L2Projector(cellvalues, ip, grid);
+projector = L2Projector(ip, grid);
 
-q_nodes = project(q, projector);
+q_nodes = project(projector, q, qr);
 
 vtk_grid("heat_equation_flux", grid) do vtk
     vtk_point_data(vtk, q_nodes, "q")
