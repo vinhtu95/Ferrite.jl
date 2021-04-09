@@ -191,22 +191,22 @@ end;</code></pre><p>Define a main function, with a loop for Newton iterations</p
 
     print_timer(title = &quot;Analysis with $(getncells(grid)) elements&quot;, linechars = :ascii)
     return u
-end</code></pre><pre class="documenter-example-output">solve (generic function with 1 method)</pre><p>Run the simulation</p><pre><code class="language-julia">u = solve();</code></pre><pre class="documenter-example-output">Solving: (thresh = 1e-08, value = 0.013799)[K
-  iter:  2[K[A
+end</code></pre><pre class="documenter-example-output">solve (generic function with 1 method)</pre><p>Run the simulation</p><pre><code class="language-julia">u = solve();</code></pre><pre class="documenter-example-output">Solving: (thresh = 1e-08, value = 0.194526)[K
+  iter:  1[K[A
 [K[ASolving: Time: 0:00:00 (6 iterations)[K
   iter:  5[K
  ------------------------------------------------------------------------------
   Analysis with 6000 elements          Time                   Allocations
                                ----------------------   -----------------------
-       Tot / % measured:            1.51s / 23.3%            257MiB / 4.92%
+       Tot / % measured:            1.63s / 24.7%            257MiB / 4.92%
 
  Section               ncalls     time   %tot     avg     alloc   %tot      avg
  ------------------------------------------------------------------------------
- assemble                   6    157ms  44.7%  26.2ms   7.15MiB  56.5%  1.19MiB
-   element assemble     36.0k   95.9ms  27.2%  2.66μs     0.00B  0.00%    0.00B
- linear solve (Iter...      5    120ms  34.2%  24.1ms    474KiB  3.66%  94.8KiB
- linear solve (Kryl...      5   40.5ms  11.5%  8.10ms    669KiB  5.17%   134KiB
- export                     1   33.9ms  9.62%  33.9ms   4.38MiB  34.6%  4.38MiB
+ assemble                   6    176ms  43.8%  29.4ms   7.15MiB  56.5%  1.19MiB
+   element assemble     36.0k    117ms  29.1%  3.25μs     0.00B  0.00%    0.00B
+ linear solve (Iter...      5    151ms  37.5%  30.2ms    474KiB  3.66%  94.8KiB
+ linear solve (Kryl...      5   45.4ms  11.3%  9.07ms    669KiB  5.17%   134KiB
+ export                     1   29.7ms  7.39%  29.7ms   4.38MiB  34.6%  4.38MiB
  ------------------------------------------------------------------------------</pre><h2 id="Plain-Program"><a class="docs-heading-anchor" href="#Plain-Program">Plain Program</a><a id="Plain-Program-1"></a><a class="docs-heading-anchor-permalink" href="#Plain-Program" title="Permalink"></a></h2><p>Below follows a version of the program without any comments. The file is also available here: <a href="../hyperelasticity.jl">hyperelasticity.jl</a></p><pre><code class="language-julia">using Ferrite, Tensors, TimerOutputs, ProgressMeter
 import KrylovMethods, IterativeSolvers
 
@@ -403,4 +403,4 @@ end
 
 u = solve();
 
-# This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../incompressible_elasticity/">« Incompressible Elasticity</a><a class="docs-footer-nextpage" href="../threaded_assembly/">Threaded Assembly »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Thursday 8 April 2021 12:08">Thursday 8 April 2021</span>. Using Julia version 1.6.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+# This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../incompressible_elasticity/">« Incompressible Elasticity</a><a class="docs-footer-nextpage" href="../threaded_assembly/">Threaded Assembly »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Friday 9 April 2021 15:17">Friday 9 April 2021</span>. Using Julia version 1.6.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
