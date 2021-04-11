@@ -309,3 +309,6 @@ function integrate_shell!(ke, cv, qr_ooplane, X, data)
         end
     end
 end;
+
+# Run everything:
+main()
