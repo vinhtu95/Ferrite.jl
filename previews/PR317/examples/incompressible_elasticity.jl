@@ -1,4 +1,4 @@
-using JuAFEM
+using Ferrite
 using BlockArrays, SparseArrays, LinearAlgebra
 
 function create_cook_grid(nx, ny)

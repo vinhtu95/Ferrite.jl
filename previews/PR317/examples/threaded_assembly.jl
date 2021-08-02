@@ -1,10 +1,10 @@
-using JuAFEM, SparseArrays
+using Ferrite, SparseArrays
 
 function create_example_2d_grid()
     grid = generate_grid(Quadrilateral, (10, 10), Vec{2}((0.0, 0.0)), Vec{2}((10.0, 10.0)))
-    cell_colors, colors = JuAFEM.create_coloring(grid)
+    cell_colors, colors = Ferrite.create_coloring(grid)
     vtk_grid("colored", grid) do vtk
-        JuAFEM.vtk_cell_data_colors(vtk, grid, colors)
+        Ferrite.vtk_cell_data_colors(vtk, grid, colors)
     end
 end;
 
@@ -12,7 +12,7 @@ create_example_2d_grid()
 
 function create_colored_cantilever_grid(celltype, n)
     grid = generate_grid(celltype, (10*n, n, n), Vec{3}((0.0, 0.0, 0.0)), Vec{3}((10.0, 1.0, 1.0)))
-    cell_colors, final_colors = JuAFEM.create_coloring(grid)
+    cell_colors, final_colors = Ferrite.create_coloring(grid)
     return grid, final_colors
 end;
 
@@ -41,7 +41,7 @@ struct ScratchValues{T, CV <: CellValues, FV <: FaceValues, TT <: AbstractTensor
     global_dofs::Vector{Int}
     ɛ::Vector{TT}
     coordinates::Vector{Vec{dim, T}}
-    assembler::JuAFEM.AssemblerSparsityPattern{T, Ti}
+    assembler::Ferrite.AssemblerSparsityPattern{T, Ti}
 end;
 
 function create_values(refshape, dim, order::Int)
