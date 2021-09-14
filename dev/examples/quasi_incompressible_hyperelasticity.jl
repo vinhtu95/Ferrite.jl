@@ -1,4 +1,4 @@
-using Ferrite, Tensors, TimerOutputs, ProgressMeter
+using Ferrite, Tensors, ProgressMeter
 using BlockArrays, SparseArrays, LinearAlgebra
 
 struct NeoHooke
@@ -165,20 +165,19 @@ function assemble_global!(K::SparseMatrixCSC, f, cellvalues_u::CellVectorValues{
 
     assembler = start_assemble(K, f)
     # Loop over all cells in the grid
-    @timeit "assemble" for cell in CellIterator(dh)
+    for cell in CellIterator(dh)
         global_dofs = celldofs(cell)
         global_dofsu = global_dofs[1:nu]; # first nu dofs are displacement
         global_dofsp = global_dofs[nu + 1:end]; # last np dofs are pressure
         @assert size(global_dofs, 1) == nu + np # sanity check
         ue = w[global_dofsu] # displacement dofs for the current cell
         pe = w[global_dofsp] # pressure dofs for the current cell
-        @timeit "element assemble" assemble_element!(ke, fe, cell, cellvalues_u, cellvalues_p, mp, ue, pe)
+        assemble_element!(ke, fe, cell, cellvalues_u, cellvalues_p, mp, ue, pe)
         assemble!(assembler, global_dofs, fe, ke)
     end
 end;
 
 function solve(interpolation_u, interpolation_p)
-    reset_timer!()
 
     # import the mesh
     grid = importTestGrid()
@@ -214,18 +213,19 @@ function solve(interpolation_u, interpolation_p)
     pvd = paraview_collection("hyperelasticity_incomp_mixed.pvd");
     for t ∈ 0.0:Δt:Tf
         # Perform Newton iterations
-        print("Time is $t")
         Ferrite.update!(dbc, t)
         apply!(w, dbc)
         newton_itr = -1
-        prog = ProgressMeter.ProgressThresh(NEWTON_TOL, "Solving:")
+        prog = ProgressMeter.ProgressThresh(NEWTON_TOL, "Solving @ time $t of $Tf;")
         fill!(ΔΔw, 0.0);
         while true; newton_itr += 1
             assemble_global!(K, f, cellvalues_u, cellvalues_p, dh, mp, w)
             norm_res = norm(f[Ferrite.free_dofs(dbc)])
             apply_zero!(K, f, dbc)
-            ProgressMeter.update!(prog, norm_res; showvalues = [(:iter, newton_itr)])
-
+            # Only display output at specific load steps
+            if t%(5*Δt) == 0
+                ProgressMeter.update!(prog, norm_res; showvalues = [(:iter, newton_itr)])
+            end
             if norm_res < NEWTON_TOL
                 break
             elseif newton_itr > 30
@@ -239,15 +239,11 @@ function solve(interpolation_u, interpolation_p)
         end;
 
         # Save the solution fields
-        @timeit "export" begin
-            vtk_grid("hyperelasticity_incomp_mixed_$t.vtu", dh, compress=false) do vtkfile
-                vtk_point_data(vtkfile, dh, w)
-                vtk_save(vtkfile)
-                pvd[t] = vtkfile
-            end
+        vtk_grid("hyperelasticity_incomp_mixed_$t.vtu", dh, compress=false) do vtkfile
+            vtk_point_data(vtkfile, dh, w)
+            vtk_save(vtkfile)
+            pvd[t] = vtkfile
         end
-
-        print_timer(title = "Analysis with $(getncells(grid)) elements", linechars = :ascii)
     end;
     vtk_save(pvd);
     vol_def = calculate_volume_deformed_mesh(w, dh, cellvalues_u);

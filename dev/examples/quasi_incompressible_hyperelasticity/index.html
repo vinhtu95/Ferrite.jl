@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Nearly Incompressible Hyperelasticity · Ferrite.jl</title><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.11.1/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit">Ferrite.jl</span></div><form class="docs-search" action="../../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><a class="tocitem" href="../../manual/fe_intro/">Introduction to FEM</a></li><li><span class="tocitem">Manual</span><ul><li><a class="tocitem" href="../../manual/degrees_of_freedom/">Degrees of Freedom</a></li><li><a class="tocitem" href="../../manual/assembly/">Assembly</a></li><li><a class="tocitem" href="../../manual/boundary_conditions/">Boundary Conditions</a></li><li><a class="tocitem" href="../../manual/grid/">Grid</a></li><li><a class="tocitem" href="../../manual/export/">Export</a></li></ul></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="../heat_equation/">Heat Equation</a></li><li><a class="tocitem" href="../l2_projection/">L2-projection</a></li><li><a class="tocitem" href="../helmholtz/">Helmholtz equation</a></li><li><a class="tocitem" href="../incompressible_elasticity/">Incompressible Elasticity</a></li><li><a class="tocitem" href="../hyperelasticity/">Hyperelasticity</a></li><li><a class="tocitem" href="../threaded_assembly/">Threaded Assembly</a></li><li><a class="tocitem" href="../plasticity/">von Mises plasticity</a></li><li><a class="tocitem" href="../transient_heat_equation/">Time Dependent Problems</a></li><li><a class="tocitem" href="../landau/">Ginzburg-Landau model energy minimization</a></li><li><a class="tocitem" href="../linear_shell/">Linear shell</a></li><li class="is-active"><a class="tocitem" href>Nearly Incompressible Hyperelasticity</a><ul class="internal"><li><a class="tocitem" href="#Introduction"><span>Introduction</span></a></li><li><a class="tocitem" href="#References"><span>References</span></a></li><li><a class="tocitem" href="#Plain-Program"><span>Plain Program</span></a></li></ul></li></ul></li><li><span class="tocitem">API Reference</span><ul><li><a class="tocitem" href="../../reference/quadrature/">Quadrature</a></li><li><a class="tocitem" href="../../reference/interpolations/">Interpolation</a></li><li><a class="tocitem" href="../../reference/fevalues/">FEValues</a></li><li><a class="tocitem" href="../../reference/dofhandler/">DofHandler</a></li><li><a class="tocitem" href="../../reference/assembly/">Assembly</a></li><li><a class="tocitem" href="../../reference/boundary_conditions/">Boundary Conditions</a></li><li><a class="tocitem" href="../../reference/grid/">Grid</a></li><li><a class="tocitem" href="../../reference/export/">Export</a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>Nearly Incompressible Hyperelasticity</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Nearly Incompressible Hyperelasticity</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/Ferrite-FEM/Ferrite.jl/blob/master/docs/src/literate/quasi_incompressible_hyperelasticity.jl" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="Nearly-Incompressible-Hyperelasticity"><a class="docs-heading-anchor" href="#Nearly-Incompressible-Hyperelasticity">Nearly Incompressible Hyperelasticity</a><a id="Nearly-Incompressible-Hyperelasticity-1"></a><a class="docs-heading-anchor-permalink" href="#Nearly-Incompressible-Hyperelasticity" title="Permalink"></a></h1><p><img src="../quasi_incompressible_hyperelasticity.gif" alt/></p><div class="admonition is-success"><header class="admonition-header">Tip</header><div class="admonition-body"><p>This example is also available as a Jupyter notebook: <a href="https://nbviewer.jupyter.org/github/Ferrite-FEM/Ferrite.jl/blob/gh-pages/dev/examples/quasi_incompressible_hyperelasticity.ipynb"><code>quasi_incompressible_hyperelasticity.ipynb</code></a></p></div></div><h2 id="Introduction"><a class="docs-heading-anchor" href="#Introduction">Introduction</a><a id="Introduction-1"></a><a class="docs-heading-anchor-permalink" href="#Introduction" title="Permalink"></a></h2><p>In this example we study quasi- or nearly-incompressible hyperelasticity using the stable Taylor-Hood approximation. In spirit, this example is the nonlinear analogue of <a href="https://nbviewer.jupyter.org/github/Ferrite-FEM/Ferrite.jl/blob/gh-pages/dev/examples/incompressible_elasticity.ipynb"><code>incompressible_elasticity</code></a> and the incompressible analogue of <a href="https://nbviewer.jupyter.org/github/Ferrite-FEM/Ferrite.jl/blob/gh-pages/dev/examples/hyperelasticity.ipynb"><code>hyperelasticity</code></a>. Much of the code therefore follows from the above two examples. The problem is formulated in the undeformed or reference configuration with the displacement <code>u</code> and pressure <code>p</code> being the unknown fields. We now briefly outline the formulation. Consider the standard hyperelasticity problem</p><p class="math-container">\[  u = \argmin_{v\in\mathcal{K}}\Pi(v),\quad \text{where}\quad \Pi(v)  = \int_\Omega \Psi(v) \ \mathrm{d}\Omega\ .\]</p><p>For clarity of presentation we ignore any non-zero surface tractions and body forces and instead consider only applied displacements (i.e. non-homogeneous dirichlet boundary conditions). Moreover we stick our attention to the standard Neo-Hookean stored energy density</p><p class="math-container">\[    \Psi(u) = \frac{\mu}{2}\left(I_1 - 3 \right) - \mu \log(J) + \frac{\lambda}{2}\left( J - 1\right){}^2,\]</p><p>where I₁=F:F≡FᵢⱼFᵢⱼ and J = det(F) denote the standard invariants of the deformation gradient tensor F = 𝛪 + ∇u. The above problem is ill-posed in the limit of incompressibility (or near-incompressibility), namely when</p><p class="math-container">\[    \lambda/\mu \rightarrow +\infty.\]</p><p>In order to alleviate the problem, we consider the partial legendre transform of the strain energy density Ψ with respect to J = det(F), namely</p><p class="math-container">\[  \widehat{\Psi}(p) = \sup_{J} \left[ p(J - 1) - \frac{\mu}{2}\left(I_1 - 3 \right) + \mu \log(J) - \frac{\lambda}{2}\left( J - 1\right){}^2 \right].\]</p><p>The supremum, say J*, can be calculated in closed form by simply using the first order optimailty condition, i.e. ∂Ψ/∂J = 0. This gives</p><p class="math-container">\[  J^\star(p) = \frac{\lambda + p + \sqrt{(\lambda + p){}^2 + 4 \lambda \mu }}{(2 \lambda)}.\]</p><p>Furthermore, taking the partial legendre transform of <span>$\widehat{\Psi}$</span> once again, gives us back the original problem, i.e.</p><p class="math-container">\[    \Psi(u) = \Psi^\star(u, p) = \sup_{p} \left[ p(J - 1) - p(J^\star - 1) + \frac{\mu}{2}\left(I_1 - 3 \right) - \mu \log(J^\star) + \frac{\lambda}{2}\left( J^\star - 1\right){}^2 \right].\]</p><p>Therefore our original hyperelasticity problem can now be reformulated as</p><p class="math-container">\[  \inf_{u\in\mathcal{K}}\sup_{p} \int_\Omega\Psi^{\star} (u, p) \ \mathrm{d}\Omega.\]</p><p>The total (modified) energy Π* can then be written as</p><p class="math-container">\[  \Pi^\star(u, p) = \int_\Omega p (J - J^\star) \ \mathrm{d}\Omega + \int_\Omega \frac{\mu}{2} \left( I_1 - 3\right) \ \mathrm{d}\Omega - \int_\Omega \mu\log(J^\star)\ \mathrm{d}\Omega + \int_\Omega \frac{\lambda}{2}\left( J^\star - 1 \right){}^2\ \mathrm{d}\Omega\]</p><p>Calculating the euler-lagrange equations from the above energy give us our governing equations in the weak form, namely</p><p class="math-container">\[  \int_\Omega \frac{\partial\Psi^\star}{\partial F}:\delta F \ \mathrm{d}\Omega = 0\]</p><p>and</p><p class="math-container">\[  \int_\Omega \frac{\partial \Psi^\star}{\partial p}\delta p \ \mathrm{d}\Omega,\]</p><p>where δF = δ∇u = ∇(δu) and δu and δp denote arbitrary variations with respect to displacement and pressure. See the references below for a more detailed exmplanation of the above mathematical trick. Now, in order to apply Newton&#39;s method to the above problem, we further need to calculate the respective hessians (tangent), namely, ∂²Ψ<em>/∂F², ∂²Ψ</em>/∂p² and ∂²Ψ*/∂F∂p which, using <code>Tensors.jl</code>, can be determined conveniently using automatic differentiation. Hence we only need to define the above potential. The remaineder of the example follows similarly.</p><h2 id="References"><a class="docs-heading-anchor" href="#References">References</a><a id="References-1"></a><a class="docs-heading-anchor-permalink" href="#References" title="Permalink"></a></h2><ol><li><a href="http://pamies.cee.illinois.edu/Publications_files/CMAME_2016.pdf">A paradigm for higher-order polygonal elements in finite elasticity using a gradient correction scheme, CMAME 2016, 306, 216–251</a></li><li><a href="https://link.springer.com/content/pdf/10.1007/s00466-013-0869-0.pdf">Approximation of incompressible large deformation elastic problems: some unresolved issues, Computational Mechanics, 2013</a></li></ol><p>We now get to the actual code. First, we import the respective packages</p><pre><code class="language-julia">using Ferrite, Tensors, TimerOutputs, ProgressMeter
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Nearly Incompressible Hyperelasticity · Ferrite.jl</title><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.11.1/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit">Ferrite.jl</span></div><form class="docs-search" action="../../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><a class="tocitem" href="../../manual/fe_intro/">Introduction to FEM</a></li><li><span class="tocitem">Manual</span><ul><li><a class="tocitem" href="../../manual/degrees_of_freedom/">Degrees of Freedom</a></li><li><a class="tocitem" href="../../manual/assembly/">Assembly</a></li><li><a class="tocitem" href="../../manual/boundary_conditions/">Boundary Conditions</a></li><li><a class="tocitem" href="../../manual/grid/">Grid</a></li><li><a class="tocitem" href="../../manual/export/">Export</a></li></ul></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="../heat_equation/">Heat Equation</a></li><li><a class="tocitem" href="../l2_projection/">L2-projection</a></li><li><a class="tocitem" href="../helmholtz/">Helmholtz equation</a></li><li><a class="tocitem" href="../incompressible_elasticity/">Incompressible Elasticity</a></li><li><a class="tocitem" href="../hyperelasticity/">Hyperelasticity</a></li><li><a class="tocitem" href="../threaded_assembly/">Threaded Assembly</a></li><li><a class="tocitem" href="../plasticity/">von Mises plasticity</a></li><li><a class="tocitem" href="../transient_heat_equation/">Time Dependent Problems</a></li><li><a class="tocitem" href="../landau/">Ginzburg-Landau model energy minimization</a></li><li><a class="tocitem" href="../linear_shell/">Linear shell</a></li><li class="is-active"><a class="tocitem" href>Nearly Incompressible Hyperelasticity</a><ul class="internal"><li><a class="tocitem" href="#Introduction"><span>Introduction</span></a></li><li><a class="tocitem" href="#References"><span>References</span></a></li><li><a class="tocitem" href="#Plain-Program"><span>Plain Program</span></a></li></ul></li></ul></li><li><span class="tocitem">API Reference</span><ul><li><a class="tocitem" href="../../reference/quadrature/">Quadrature</a></li><li><a class="tocitem" href="../../reference/interpolations/">Interpolation</a></li><li><a class="tocitem" href="../../reference/fevalues/">FEValues</a></li><li><a class="tocitem" href="../../reference/dofhandler/">DofHandler</a></li><li><a class="tocitem" href="../../reference/assembly/">Assembly</a></li><li><a class="tocitem" href="../../reference/boundary_conditions/">Boundary Conditions</a></li><li><a class="tocitem" href="../../reference/grid/">Grid</a></li><li><a class="tocitem" href="../../reference/export/">Export</a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>Nearly Incompressible Hyperelasticity</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Nearly Incompressible Hyperelasticity</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/Ferrite-FEM/Ferrite.jl/blob/master/docs/src/literate/quasi_incompressible_hyperelasticity.jl" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="Nearly-Incompressible-Hyperelasticity"><a class="docs-heading-anchor" href="#Nearly-Incompressible-Hyperelasticity">Nearly Incompressible Hyperelasticity</a><a id="Nearly-Incompressible-Hyperelasticity-1"></a><a class="docs-heading-anchor-permalink" href="#Nearly-Incompressible-Hyperelasticity" title="Permalink"></a></h1><p><img src="../quasi_incompressible_hyperelasticity.gif" alt/></p><div class="admonition is-success"><header class="admonition-header">Tip</header><div class="admonition-body"><p>This example is also available as a Jupyter notebook: <a href="https://nbviewer.jupyter.org/github/Ferrite-FEM/Ferrite.jl/blob/gh-pages/dev/examples/quasi_incompressible_hyperelasticity.ipynb"><code>quasi_incompressible_hyperelasticity.ipynb</code></a></p></div></div><h2 id="Introduction"><a class="docs-heading-anchor" href="#Introduction">Introduction</a><a id="Introduction-1"></a><a class="docs-heading-anchor-permalink" href="#Introduction" title="Permalink"></a></h2><p>In this example we study quasi- or nearly-incompressible hyperelasticity using the stable Taylor-Hood approximation. In spirit, this example is the nonlinear analogue of <a href="https://nbviewer.jupyter.org/github/Ferrite-FEM/Ferrite.jl/blob/gh-pages/dev/examples/incompressible_elasticity.ipynb"><code>incompressible_elasticity</code></a> and the incompressible analogue of <a href="https://nbviewer.jupyter.org/github/Ferrite-FEM/Ferrite.jl/blob/gh-pages/dev/examples/hyperelasticity.ipynb"><code>hyperelasticity</code></a>. Much of the code therefore follows from the above two examples. The problem is formulated in the undeformed or reference configuration with the displacement <code>u</code> and pressure <code>p</code> being the unknown fields. We now briefly outline the formulation. Consider the standard hyperelasticity problem</p><p class="math-container">\[  u = \argmin_{v\in\mathcal{K}}\Pi(v),\quad \text{where}\quad \Pi(v)  = \int_\Omega \Psi(v) \ \mathrm{d}\Omega\ .\]</p><p>For clarity of presentation we ignore any non-zero surface tractions and body forces and instead consider only applied displacements (i.e. non-homogeneous dirichlet boundary conditions). Moreover we stick our attention to the standard Neo-Hookean stored energy density</p><p class="math-container">\[    \Psi(u) = \frac{\mu}{2}\left(I_1 - 3 \right) - \mu \log(J) + \frac{\lambda}{2}\left( J - 1\right){}^2,\]</p><p>where <span>$I_1 = F:F = F_{ij}F_{ij}$</span> and J = det(F) denote the standard invariants of the deformation gradient tensor <span>$F = \mathbb{I}+\nabla u$</span>. The above problem is ill-posed in the limit of incompressibility (or near-incompressibility), namely when</p><p class="math-container">\[    \lambda/\mu \rightarrow +\infty.\]</p><p>In order to alleviate the problem, we consider the partial legendre transform of the strain energy density Ψ with respect to J = det(F), namely</p><p class="math-container">\[  \widehat{\Psi}(u, p) = \sup_{J} \left[ p(J - 1) - \frac{\mu}{2}\left(I_1 - 3 \right) + \mu \log(J) - \frac{\lambda}{2}\left( J - 1\right){}^2 \right].\]</p><p>The supremum, say <span>$J^\star$</span>, can be calculated in closed form by the first order optimailty condition <span>$\partial\widehat{\Psi}/\partial J = 0$</span>. This gives</p><p class="math-container">\[  J^\star(p) = \frac{\lambda + p + \sqrt{(\lambda + p){}^2 + 4 \lambda \mu }}{(2 \lambda)}.\]</p><p>Furthermore, taking the partial legendre transform of <span>$\widehat{\Psi}$</span> once again, gives us back the original problem, i.e.</p><p class="math-container">\[    \Psi(u) = \Psi^\star(u, p) = \sup_{p} \left[ p(J - 1) - p(J^\star - 1) + \frac{\mu}{2}\left(I_1 - 3 \right) - \mu \log(J^\star) + \frac{\lambda}{2}\left( J^\star - 1\right){}^2 \right].\]</p><p>Therefore our original hyperelasticity problem can now be reformulated as</p><p class="math-container">\[  \inf_{u\in\mathcal{K}}\sup_{p} \int_\Omega\Psi^{\star} (u, p) \ \mathrm{d}\Omega.\]</p><p>The total (modified) energy <span>$\Pi^\star$</span> can then be written as</p><p class="math-container">\[  \Pi^\star(u, p) = \int_\Omega p (J - J^\star) \ \mathrm{d}\Omega + \int_\Omega \frac{\mu}{2} \left( I_1 - 3\right) \ \mathrm{d}\Omega - \int_\Omega \mu\log(J^\star)\ \mathrm{d}\Omega + \int_\Omega \frac{\lambda}{2}\left( J^\star - 1 \right){}^2\ \mathrm{d}\Omega\]</p><p>The euler-lagrange equations corresponding to the above energy give us our governing PDEs in the weak form, namely</p><p class="math-container">\[  \int_\Omega \frac{\partial\Psi^\star}{\partial F}:\delta F \ \mathrm{d}\Omega = 0\]</p><p>and</p><p class="math-container">\[  \int_\Omega \frac{\partial \Psi^\star}{\partial p}\delta p \ \mathrm{d}\Omega = 0,\]</p><p>where δF = δ∇u = ∇(δu) and δu and δp denote arbitrary variations with respect to displacement and pressure (or the test functions). See the references below for a more detailed explanation of the above mathematical trick. Now, in order to apply Newton&#39;s method to the above problem, we further need to linearize the above equations and calculate the respective hessians (or tangents), namely, <span>$\partial^2\Psi^\star/\partial F^2$</span>, <span>$\partial^2\Psi^\star/\partial p^2$</span> and <span>$\partial^2\Psi^\star/\partial F\partial p$</span> which, using <code>Tensors.jl</code>, can be determined conveniently using automatic differentiation (see the code below). Hence we only need to define the above potential. The remaineder of the example follows similarly.</p><h2 id="References"><a class="docs-heading-anchor" href="#References">References</a><a id="References-1"></a><a class="docs-heading-anchor-permalink" href="#References" title="Permalink"></a></h2><ol><li><a href="http://pamies.cee.illinois.edu/Publications_files/CMAME_2016.pdf">A paradigm for higher-order polygonal elements in finite elasticity using a gradient correction scheme, CMAME 2016, 306, 216–251</a></li><li><a href="https://link.springer.com/content/pdf/10.1007/s00466-013-0869-0.pdf">Approximation of incompressible large deformation elastic problems: some unresolved issues, Computational Mechanics, 2013</a></li></ol><p>We now get to the actual code. First, we import the respective packages</p><pre><code class="language-julia">using Ferrite, Tensors, ProgressMeter
 using BlockArrays, SparseArrays, LinearAlgebra</code></pre><p>and the corresponding <code>struct</code> to store our material properties.</p><pre><code class="language-julia">struct NeoHooke
     μ::Float64
     λ::Float64
@@ -144,18 +144,17 @@ end;</code></pre><p>The only thing that changes in the assembly of the global st
 
     assembler = start_assemble(K, f)
     # Loop over all cells in the grid
-    @timeit &quot;assemble&quot; for cell in CellIterator(dh)
+    for cell in CellIterator(dh)
         global_dofs = celldofs(cell)
         global_dofsu = global_dofs[1:nu]; # first nu dofs are displacement
         global_dofsp = global_dofs[nu + 1:end]; # last np dofs are pressure
         @assert size(global_dofs, 1) == nu + np # sanity check
         ue = w[global_dofsu] # displacement dofs for the current cell
         pe = w[global_dofsp] # pressure dofs for the current cell
-        @timeit &quot;element assemble&quot; assemble_element!(ke, fe, cell, cellvalues_u, cellvalues_p, mp, ue, pe)
+        assemble_element!(ke, fe, cell, cellvalues_u, cellvalues_p, mp, ue, pe)
         assemble!(assembler, global_dofs, fe, ke)
     end
 end;</code></pre><p>We now define a main function <code>solve</code>. For nonlinear quasistatic problems we often like to parameterize the solution in terms of a pseudo time like parameter, which in this case is used to gradually apply the boundary displacement on the right face. Also for definitenessm we consider λ/μ = 10⁴</p><pre><code class="language-julia">function solve(interpolation_u, interpolation_p)
-    reset_timer!()
 
     # import the mesh
     grid = importTestGrid()
@@ -191,18 +190,19 @@ end;</code></pre><p>We now define a main function <code>solve</code>. For nonlin
     pvd = paraview_collection(&quot;hyperelasticity_incomp_mixed.pvd&quot;);
     for t ∈ 0.0:Δt:Tf
         # Perform Newton iterations
-        print(&quot;Time is $t&quot;)
         Ferrite.update!(dbc, t)
         apply!(w, dbc)
         newton_itr = -1
-        prog = ProgressMeter.ProgressThresh(NEWTON_TOL, &quot;Solving:&quot;)
+        prog = ProgressMeter.ProgressThresh(NEWTON_TOL, &quot;Solving @ time $t of $Tf;&quot;)
         fill!(ΔΔw, 0.0);
         while true; newton_itr += 1
             assemble_global!(K, f, cellvalues_u, cellvalues_p, dh, mp, w)
             norm_res = norm(f[Ferrite.free_dofs(dbc)])
             apply_zero!(K, f, dbc)
-            ProgressMeter.update!(prog, norm_res; showvalues = [(:iter, newton_itr)])
-
+            # Only display output at specific load steps
+            if t%(5*Δt) == 0
+                ProgressMeter.update!(prog, norm_res; showvalues = [(:iter, newton_itr)])
+            end
             if norm_res &lt; NEWTON_TOL
                 break
             elseif newton_itr &gt; 30
@@ -216,15 +216,11 @@ end;</code></pre><p>We now define a main function <code>solve</code>. For nonlin
         end;
 
         # Save the solution fields
-        @timeit &quot;export&quot; begin
-            vtk_grid(&quot;hyperelasticity_incomp_mixed_$t.vtu&quot;, dh, compress=false) do vtkfile
-                vtk_point_data(vtkfile, dh, w)
-                vtk_save(vtkfile)
-                pvd[t] = vtkfile
-            end
+        vtk_grid(&quot;hyperelasticity_incomp_mixed_$t.vtu&quot;, dh, compress=false) do vtkfile
+            vtk_point_data(vtkfile, dh, w)
+            vtk_save(vtkfile)
+            pvd[t] = vtkfile
         end
-
-        print_timer(title = &quot;Analysis with $(getncells(grid)) elements&quot;, linechars = :ascii)
     end;
     vtk_save(pvd);
     vol_def = calculate_volume_deformed_mesh(w, dh, cellvalues_u);
@@ -232,414 +228,47 @@ end;</code></pre><p>We now define a main function <code>solve</code>. For nonlin
     return vol_def;
 end;</code></pre><p>We can now test the solution using the Taylor-Hood approximation</p><pre><code class="language-julia">quadratic = Lagrange{3, RefTetrahedron, 2}()
 linear = Lagrange{3, RefTetrahedron, 1}()
-vol_def = solve(quadratic, linear);</code></pre><pre class="documenter-example-output">Time is 0.0Solving: (thresh = 1e-08, value = 0.157762)[K
+vol_def = solve(quadratic, linear);</code></pre><pre class="documenter-example-output">Solving @ time 0.0 of 2.0; (thresh = 1e-08, value = 0.157762)[K
   iter:  0[K[A
-[K[ASolving: (thresh = 1e-08, value = 4.78011e-05)[K
+[K[ASolving @ time 0.0 of 2.0; (thresh = 1e-08, value = 4.78011e-05)[K
   iter:  1[K[A
-[K[ASolving: Time: 0:00:00 (3 iterations)[K
+[K[ASolving @ time 0.0 of 2.0; Time: 0:00:00 (3 iterations)[K
   iter:  2[K
- -----------------------------------------------------------------------------
-  Analysis with 750 elements          Time                   Allocations
-                              ----------------------   -----------------------
-       Tot / % measured:           1.33s / 40.4%            225MiB / 1.27%
-
- Section              ncalls     time   %tot     avg     alloc   %tot      avg
- -----------------------------------------------------------------------------
- assemble                  3    521ms  96.7%   174ms   2.00MiB  70.0%   681KiB
-   element assemble    2.25k    501ms  93.0%   223μs     0.00B  0.00%    0.00B
- export                    1   17.8ms  3.30%  17.8ms    876KiB  30.0%   876KiB
- -----------------------------------------------------------------------------
-Time is 0.1Solving: (thresh = 1e-08, value = 0.141299)[K
+Solving @ time 0.5 of 2.0; (thresh = 1e-08, value = 0.137399)[K
   iter:  0[K[A
-[K[ASolving: (thresh = 1e-08, value = 0.00375798)[K
+[K[ASolving @ time 0.5 of 2.0; (thresh = 1e-08, value = 0.00164904)[K
   iter:  1[K[A
-[K[ASolving: (thresh = 1e-08, value = 0.000126188)[K
+[K[ASolving @ time 0.5 of 2.0; (thresh = 1e-08, value = 5.74317e-05)[K
   iter:  2[K[A
-[K[ASolving: (thresh = 1e-08, value = 9.66514e-08)[K
+[K[ASolving @ time 0.5 of 2.0; (thresh = 1e-08, value = 1.07293e-08)[K
   iter:  3[K[A
-[K[ASolving: Time: 0:00:01 (5 iterations)[K
+[K[ASolving @ time 0.5 of 2.0; Time: 0:00:01 (5 iterations)[K
   iter:  4[K
- -----------------------------------------------------------------------------
-  Analysis with 750 elements          Time                   Allocations
-                              ----------------------   -----------------------
-       Tot / % measured:           2.84s / 50.3%            550MiB / 1.21%
-
- Section              ncalls     time   %tot     avg     alloc   %tot      avg
- -----------------------------------------------------------------------------
- assemble                  8    1.41s  98.7%   176ms   5.32MiB  79.9%   681KiB
-   element assemble    6.00k    1.36s  94.9%   226μs     0.00B  0.00%    0.00B
- export                    2   19.0ms  1.33%  9.52ms   1.34MiB  20.1%   686KiB
- -----------------------------------------------------------------------------
-Time is 0.2Solving: (thresh = 1e-08, value = 0.139801)[K
+Solving @ time 1.0 of 2.0; (thresh = 1e-08, value = 0.135976)[K
   iter:  0[K[A
-[K[ASolving: (thresh = 1e-08, value = 0.00310873)[K
+[K[ASolving @ time 1.0 of 2.0; (thresh = 1e-08, value = 0.000819569)[K
   iter:  1[K[A
-[K[ASolving: (thresh = 1e-08, value = 0.000154311)[K
+[K[ASolving @ time 1.0 of 2.0; (thresh = 1e-08, value = 2.60479e-05)[K
   iter:  2[K[A
-[K[ASolving: (thresh = 1e-08, value = 4.51569e-07)[K
-  iter:  3[K[A
-[K[ASolving: Time: 0:00:01 (5 iterations)[K
-  iter:  4[K
- -----------------------------------------------------------------------------
-  Analysis with 750 elements          Time                   Allocations
-                              ----------------------   -----------------------
-       Tot / % measured:           4.36s / 53.5%            876MiB / 1.20%
-
- Section              ncalls     time   %tot     avg     alloc   %tot      avg
- -----------------------------------------------------------------------------
- assemble                 13    2.31s  99.1%   178ms   8.65MiB  82.6%   681KiB
-   element assemble    9.75k    2.22s  95.3%   228μs     0.00B  0.00%    0.00B
- export                    3   20.3ms  0.87%  6.75ms   1.82MiB  17.4%   622KiB
- -----------------------------------------------------------------------------
-Time is 0.3Solving: (thresh = 1e-08, value = 0.138743)[K
-  iter:  0[K[A
-[K[ASolving: (thresh = 1e-08, value = 0.00240018)[K
-  iter:  1[K[A
-[K[ASolving: (thresh = 1e-08, value = 8.34748e-05)[K
-  iter:  2[K[A
-[K[ASolving: (thresh = 1e-08, value = 3.56742e-08)[K
-  iter:  3[K[A
-[K[ASolving: Time: 0:00:01 (5 iterations)[K
-  iter:  4[K
- -----------------------------------------------------------------------------
-  Analysis with 750 elements          Time                   Allocations
-                              ----------------------   -----------------------
-       Tot / % measured:           5.91s / 55.0%           1.17GiB / 1.19%
-
- Section              ncalls     time   %tot     avg     alloc   %tot      avg
- -----------------------------------------------------------------------------
- assemble                 18    3.23s  99.3%   180ms   12.0MiB  83.8%   681KiB
-   element assemble    13.5k    3.11s  95.5%   230μs     0.00B  0.00%    0.00B
- export                    4   21.4ms  0.66%  5.35ms   2.31MiB  16.2%   591KiB
- -----------------------------------------------------------------------------
-Time is 0.4Solving: (thresh = 1e-08, value = 0.137973)[K
-  iter:  0[K[A
-[K[ASolving: (thresh = 1e-08, value = 0.00197204)[K
-  iter:  1[K[A
-[K[ASolving: (thresh = 1e-08, value = 6.85791e-05)[K
-  iter:  2[K[A
-[K[ASolving: (thresh = 1e-08, value = 1.70213e-08)[K
-  iter:  3[K[A
-[K[ASolving: Time: 0:00:01 (5 iterations)[K
-  iter:  4[K
- -----------------------------------------------------------------------------
-  Analysis with 750 elements          Time                   Allocations
-                              ----------------------   -----------------------
-       Tot / % measured:           7.41s / 55.9%           1.49GiB / 1.19%
-
- Section              ncalls     time   %tot     avg     alloc   %tot      avg
- -----------------------------------------------------------------------------
- assemble                 23    4.12s  99.5%   179ms   15.3MiB  84.6%   681KiB
-   element assemble    17.2k    3.96s  95.6%   230μs     0.00B  0.00%    0.00B
- export                    5   22.6ms  0.54%  4.51ms   2.79MiB  15.4%   572KiB
- -----------------------------------------------------------------------------
-Time is 0.5Solving: (thresh = 1e-08, value = 0.137399)[K
-  iter:  0[K[A
-[K[ASolving: (thresh = 1e-08, value = 0.00164904)[K
-  iter:  1[K[A
-[K[ASolving: (thresh = 1e-08, value = 5.74317e-05)[K
-  iter:  2[K[A
-[K[ASolving: (thresh = 1e-08, value = 1.07293e-08)[K
-  iter:  3[K[A
-[K[ASolving: Time: 0:00:01 (5 iterations)[K
-  iter:  4[K
- -----------------------------------------------------------------------------
-  Analysis with 750 elements          Time                   Allocations
-                              ----------------------   -----------------------
-       Tot / % measured:           8.94s / 56.4%           1.81GiB / 1.18%
-
- Section              ncalls     time   %tot     avg     alloc   %tot      avg
- -----------------------------------------------------------------------------
- assemble                 28    5.02s   100%   179ms   18.6MiB  85.0%   681KiB
-   element assemble    21.0k    4.83s  95.7%   230μs     0.00B  0.00%    0.00B
- export                    6   23.8ms  0.47%  3.96ms   3.28MiB  15.0%   559KiB
- -----------------------------------------------------------------------------
-Time is 0.6Solving: (thresh = 1e-08, value = 0.136963)[K
-  iter:  0[K[A
-[K[ASolving: (thresh = 1e-08, value = 0.00139993)[K
-  iter:  1[K[A
-[K[ASolving: (thresh = 1e-08, value = 4.84956e-05)[K
-  iter:  2[K[A
-[K[ASolving: Time: 0:00:01 (4 iterations)[K
+[K[ASolving @ time 1.0 of 2.0; Time: 0:00:01 (4 iterations)[K
   iter:  3[K
- -----------------------------------------------------------------------------
-  Analysis with 750 elements          Time                   Allocations
-                              ----------------------   -----------------------
-       Tot / % measured:           10.1s / 56.9%           2.05GiB / 1.19%
-
- Section              ncalls     time   %tot     avg     alloc   %tot      avg
- -----------------------------------------------------------------------------
- assemble                 32    5.74s   100%   179ms   21.3MiB  85.0%   681KiB
-   element assemble    24.0k    5.52s  95.8%   230μs     0.00B  0.00%    0.00B
- export                    7   25.0ms  0.43%  3.57ms   3.76MiB  15.0%   550KiB
- -----------------------------------------------------------------------------
-Time is 0.7Solving: (thresh = 1e-08, value = 0.136625)[K
+Solving @ time 1.5 of 2.0; (thresh = 1e-08, value = 0.135472)[K
   iter:  0[K[A
-[K[ASolving: (thresh = 1e-08, value = 0.00120454)[K
+[K[ASolving @ time 1.5 of 2.0; (thresh = 1e-08, value = 0.000500654)[K
   iter:  1[K[A
-[K[ASolving: (thresh = 1e-08, value = 4.12106e-05)[K
+[K[ASolving @ time 1.5 of 2.0; (thresh = 1e-08, value = 1.30232e-05)[K
   iter:  2[K[A
-[K[ASolving: Time: 0:00:01 (4 iterations)[K
+[K[ASolving @ time 1.5 of 2.0; Time: 0:00:01 (4 iterations)[K
   iter:  3[K
- -----------------------------------------------------------------------------
-  Analysis with 750 elements          Time                   Allocations
-                              ----------------------   -----------------------
-       Tot / % measured:           11.3s / 57.4%           2.29GiB / 1.20%
-
- Section              ncalls     time   %tot     avg     alloc   %tot      avg
- -----------------------------------------------------------------------------
- assemble                 36    6.47s   100%   180ms   23.9MiB  84.9%   681KiB
-   element assemble    27.0k    6.22s  95.8%   230μs     0.00B  0.00%    0.00B
- export                    8   26.2ms  0.40%  3.28ms   4.24MiB  15.1%   543KiB
- -----------------------------------------------------------------------------
-Time is 0.8Solving: (thresh = 1e-08, value = 0.13636)[K
+Solving @ time 2.0 of 2.0; (thresh = 1e-08, value = 0.135247)[K
   iter:  0[K[A
-[K[ASolving: (thresh = 1e-08, value = 0.00104883)[K
+[K[ASolving @ time 2.0 of 2.0; (thresh = 1e-08, value = 0.000339016)[K
   iter:  1[K[A
-[K[ASolving: (thresh = 1e-08, value = 3.52083e-05)[K
+[K[ASolving @ time 2.0 of 2.0; (thresh = 1e-08, value = 6.94365e-06)[K
   iter:  2[K[A
-[K[ASolving: Time: 0:00:01 (4 iterations)[K
+[K[ASolving @ time 2.0 of 2.0; Time: 0:00:01 (4 iterations)[K
   iter:  3[K
- -----------------------------------------------------------------------------
-  Analysis with 750 elements          Time                   Allocations
-                              ----------------------   -----------------------
-       Tot / % measured:           12.5s / 57.7%           2.53GiB / 1.21%
-
- Section              ncalls     time   %tot     avg     alloc   %tot      avg
- -----------------------------------------------------------------------------
- assemble                 40    7.19s   100%   180ms   26.6MiB  84.9%   681KiB
-   element assemble    30.0k    6.92s  95.8%   231μs     0.00B  0.00%    0.00B
- export                    9   27.3ms  0.38%  3.04ms   4.73MiB  15.1%   538KiB
- -----------------------------------------------------------------------------
-Time is 0.9Solving: (thresh = 1e-08, value = 0.136147)[K
-  iter:  0[K[A
-[K[ASolving: (thresh = 1e-08, value = 0.000922893)[K
-  iter:  1[K[A
-[K[ASolving: (thresh = 1e-08, value = 3.02211e-05)[K
-  iter:  2[K[A
-[K[ASolving: Time: 0:00:01 (4 iterations)[K
-  iter:  3[K
- -----------------------------------------------------------------------------
-  Analysis with 750 elements          Time                   Allocations
-                              ----------------------   -----------------------
-       Tot / % measured:           13.7s / 58.0%           2.77GiB / 1.22%
-
- Section              ncalls     time   %tot     avg     alloc   %tot      avg
- -----------------------------------------------------------------------------
- assemble                 44    7.91s   100%   180ms   29.3MiB  84.9%   681KiB
-   element assemble    33.0k    7.60s  95.8%   230μs     0.00B  0.00%    0.00B
- export                   10   28.4ms  0.36%  2.84ms   5.21MiB  15.1%   534KiB
- -----------------------------------------------------------------------------
-Time is 1.0Solving: (thresh = 1e-08, value = 0.135976)[K
-  iter:  0[K[A
-[K[ASolving: (thresh = 1e-08, value = 0.000819569)[K
-  iter:  1[K[A
-[K[ASolving: (thresh = 1e-08, value = 2.60479e-05)[K
-  iter:  2[K[A
-[K[ASolving: Time: 0:00:01 (4 iterations)[K
-  iter:  3[K
- -----------------------------------------------------------------------------
-  Analysis with 750 elements          Time                   Allocations
-                              ----------------------   -----------------------
-       Tot / % measured:           14.9s / 58.2%           3.01GiB / 1.22%
-
- Section              ncalls     time   %tot     avg     alloc   %tot      avg
- -----------------------------------------------------------------------------
- assemble                 48    8.63s   100%   180ms   31.9MiB  84.9%   681KiB
-   element assemble    36.0k    8.30s  95.8%   230μs     0.00B  0.00%    0.00B
- export                   11   29.6ms  0.34%  2.69ms   5.70MiB  15.1%   530KiB
- -----------------------------------------------------------------------------
-Time is 1.1Solving: (thresh = 1e-08, value = 0.135835)[K
-  iter:  0[K[A
-[K[ASolving: (thresh = 1e-08, value = 0.00073366)[K
-  iter:  1[K[A
-[K[ASolving: (thresh = 1e-08, value = 2.25347e-05)[K
-  iter:  2[K[A
-[K[ASolving: Time: 0:00:01 (4 iterations)[K
-  iter:  3[K
- -----------------------------------------------------------------------------
-  Analysis with 750 elements          Time                   Allocations
-                              ----------------------   -----------------------
-       Tot / % measured:           16.0s / 58.5%           3.25GiB / 1.23%
-
- Section              ncalls     time   %tot     avg     alloc   %tot      avg
- -----------------------------------------------------------------------------
- assemble                 52    9.35s   100%   180ms   34.6MiB  84.8%   681KiB
-   element assemble    39.0k    8.99s  95.9%   231μs     0.00B  0.00%    0.00B
- export                   12   30.7ms  0.33%  2.56ms   6.18MiB  15.2%   527KiB
- -----------------------------------------------------------------------------
-Time is 1.2Solving: (thresh = 1e-08, value = 0.135719)[K
-  iter:  0[K[A
-[K[ASolving: (thresh = 1e-08, value = 0.000661334)[K
-  iter:  1[K[A
-[K[ASolving: (thresh = 1e-08, value = 1.95613e-05)[K
-  iter:  2[K[A
-[K[ASolving: Time: 0:00:01 (4 iterations)[K
-  iter:  3[K
- -----------------------------------------------------------------------------
-  Analysis with 750 elements          Time                   Allocations
-                              ----------------------   -----------------------
-       Tot / % measured:           17.2s / 58.6%           3.49GiB / 1.23%
-
- Section              ncalls     time   %tot     avg     alloc   %tot      avg
- -----------------------------------------------------------------------------
- assemble                 56    10.1s   100%   180ms   37.2MiB  84.8%   681KiB
-   element assemble    42.0k    9.69s  95.9%   231μs     0.00B  0.00%    0.00B
- export                   13   31.9ms  0.32%  2.45ms   6.66MiB  15.2%   525KiB
- -----------------------------------------------------------------------------
-Time is 1.3Solving: (thresh = 1e-08, value = 0.135622)[K
-  iter:  0[K[A
-[K[ASolving: (thresh = 1e-08, value = 0.000599737)[K
-  iter:  1[K[A
-[K[ASolving: (thresh = 1e-08, value = 1.70328e-05)[K
-  iter:  2[K[A
-[K[ASolving: Time: 0:00:01 (4 iterations)[K
-  iter:  3[K
- -----------------------------------------------------------------------------
-  Analysis with 750 elements          Time                   Allocations
-                              ----------------------   -----------------------
-       Tot / % measured:           18.5s / 58.8%           3.73GiB / 1.23%
-
- Section              ncalls     time   %tot     avg     alloc   %tot      avg
- -----------------------------------------------------------------------------
- assemble                 60    10.8s   100%   180ms   39.9MiB  84.8%   681KiB
-   element assemble    45.0k    10.4s  95.9%   231μs     0.00B  0.00%    0.00B
- export                   14   33.2ms  0.31%  2.37ms   7.15MiB  15.2%   523KiB
- -----------------------------------------------------------------------------
-Time is 1.4Solving: (thresh = 1e-08, value = 0.135541)[K
-  iter:  0[K[A
-[K[ASolving: (thresh = 1e-08, value = 0.000546722)[K
-  iter:  1[K[A
-[K[ASolving: (thresh = 1e-08, value = 1.48738e-05)[K
-  iter:  2[K[A
-[K[ASolving: Time: 0:00:01 (4 iterations)[K
-  iter:  3[K
- -----------------------------------------------------------------------------
-  Analysis with 750 elements          Time                   Allocations
-                              ----------------------   -----------------------
-       Tot / % measured:           19.7s / 58.9%           3.97GiB / 1.24%
-
- Section              ncalls     time   %tot     avg     alloc   %tot      avg
- -----------------------------------------------------------------------------
- assemble                 64    11.6s   100%   181ms   42.6MiB  84.8%   681KiB
-   element assemble    48.0k    11.1s  95.9%   232μs     0.00B  0.00%    0.00B
- export                   15   34.4ms  0.30%  2.29ms   7.63MiB  15.2%   521KiB
- -----------------------------------------------------------------------------
-Time is 1.5Solving: (thresh = 1e-08, value = 0.135472)[K
-  iter:  0[K[A
-[K[ASolving: (thresh = 1e-08, value = 0.000500654)[K
-  iter:  1[K[A
-[K[ASolving: (thresh = 1e-08, value = 1.30232e-05)[K
-  iter:  2[K[A
-[K[ASolving: Time: 0:00:01 (4 iterations)[K
-  iter:  3[K
- -----------------------------------------------------------------------------
-  Analysis with 750 elements          Time                   Allocations
-                              ----------------------   -----------------------
-       Tot / % measured:           20.9s / 59.1%           4.21GiB / 1.24%
-
- Section              ncalls     time   %tot     avg     alloc   %tot      avg
- -----------------------------------------------------------------------------
- assemble                 68    12.3s   100%   181ms   45.2MiB  84.8%   681KiB
-   element assemble    51.0k    11.8s  95.9%   232μs     0.00B  0.00%    0.00B
- export                   16   35.5ms  0.29%  2.22ms   8.12MiB  15.2%   519KiB
- -----------------------------------------------------------------------------
-Time is 1.6Solving: (thresh = 1e-08, value = 0.135413)[K
-  iter:  0[K[A
-[K[ASolving: (thresh = 1e-08, value = 0.000460277)[K
-  iter:  1[K[A
-[K[ASolving: (thresh = 1e-08, value = 1.14317e-05)[K
-  iter:  2[K[A
-[K[ASolving: Time: 0:00:01 (4 iterations)[K
-  iter:  3[K
- -----------------------------------------------------------------------------
-  Analysis with 750 elements          Time                   Allocations
-                              ----------------------   -----------------------
-       Tot / % measured:           22.1s / 59.2%           4.45GiB / 1.24%
-
- Section              ncalls     time   %tot     avg     alloc   %tot      avg
- -----------------------------------------------------------------------------
- assemble                 72    13.0s   100%   181ms   47.9MiB  84.8%   681KiB
-   element assemble    54.0k    12.5s  95.9%   232μs     0.00B  0.00%    0.00B
- export                   17   36.7ms  0.28%  2.16ms   8.60MiB  15.2%   518KiB
- -----------------------------------------------------------------------------
-Time is 1.7Solving: (thresh = 1e-08, value = 0.135362)[K
-  iter:  0[K[A
-[K[ASolving: (thresh = 1e-08, value = 0.000424615)[K
-  iter:  1[K[A
-[K[ASolving: (thresh = 1e-08, value = 1.00585e-05)[K
-  iter:  2[K[A
-[K[ASolving: Time: 0:00:01 (4 iterations)[K
-  iter:  3[K
- -----------------------------------------------------------------------------
-  Analysis with 750 elements          Time                   Allocations
-                              ----------------------   -----------------------
-       Tot / % measured:           23.3s / 59.3%           4.69GiB / 1.24%
-
- Section              ncalls     time   %tot     avg     alloc   %tot      avg
- -----------------------------------------------------------------------------
- assemble                 76    13.8s   100%   181ms   50.5MiB  84.8%   681KiB
-   element assemble    57.0k    13.2s  95.9%   232μs     0.00B  0.00%    0.00B
- export                   18   37.9ms  0.27%  2.10ms   9.08MiB  15.2%   517KiB
- -----------------------------------------------------------------------------
-Time is 1.8Solving: (thresh = 1e-08, value = 0.135319)[K
-  iter:  0[K[A
-[K[ASolving: (thresh = 1e-08, value = 0.000392902)[K
-  iter:  1[K[A
-[K[ASolving: (thresh = 1e-08, value = 8.8705e-06)[K
-  iter:  2[K[A
-[K[ASolving: Time: 0:00:01 (4 iterations)[K
-  iter:  3[K
- -----------------------------------------------------------------------------
-  Analysis with 750 elements          Time                   Allocations
-                              ----------------------   -----------------------
-       Tot / % measured:           24.4s / 59.4%           4.93GiB / 1.24%
-
- Section              ncalls     time   %tot     avg     alloc   %tot      avg
- -----------------------------------------------------------------------------
- assemble                 80    14.5s   100%   181ms   53.2MiB  84.8%   681KiB
-   element assemble    60.0k    13.9s  95.9%   232μs     0.00B  0.00%    0.00B
- export                   19   39.0ms  0.27%  2.05ms   9.57MiB  15.2%   516KiB
- -----------------------------------------------------------------------------
-Time is 1.9Solving: (thresh = 1e-08, value = 0.13528)[K
-  iter:  0[K[A
-[K[ASolving: (thresh = 1e-08, value = 0.000364531)[K
-  iter:  1[K[A
-[K[ASolving: (thresh = 1e-08, value = 7.83989e-06)[K
-  iter:  2[K[A
-[K[ASolving: Time: 0:00:01 (4 iterations)[K
-  iter:  3[K
- -----------------------------------------------------------------------------
-  Analysis with 750 elements          Time                   Allocations
-                              ----------------------   -----------------------
-       Tot / % measured:           25.6s / 59.4%           5.17GiB / 1.25%
-
- Section              ncalls     time   %tot     avg     alloc   %tot      avg
- -----------------------------------------------------------------------------
- assemble                 84    15.2s   100%   181ms   55.9MiB  84.8%   681KiB
-   element assemble    63.0k    14.6s  95.9%   231μs     0.00B  0.00%    0.00B
- export                   20   40.2ms  0.26%  2.01ms   10.1MiB  15.2%   515KiB
- -----------------------------------------------------------------------------
-Time is 2.0Solving: (thresh = 1e-08, value = 0.135247)[K
-  iter:  0[K[A
-[K[ASolving: (thresh = 1e-08, value = 0.000339016)[K
-  iter:  1[K[A
-[K[ASolving: (thresh = 1e-08, value = 6.94365e-06)[K
-  iter:  2[K[A
-[K[ASolving: Time: 0:00:01 (4 iterations)[K
-  iter:  3[K
- -----------------------------------------------------------------------------
-  Analysis with 750 elements          Time                   Allocations
-                              ----------------------   -----------------------
-       Tot / % measured:           26.7s / 59.5%           5.41GiB / 1.25%
-
- Section              ncalls     time   %tot     avg     alloc   %tot      avg
- -----------------------------------------------------------------------------
- assemble                 88    15.9s   100%   180ms   58.5MiB  84.7%   681KiB
-   element assemble    66.0k    15.3s  95.9%   231μs     0.00B  0.00%    0.00B
- export                   21   41.4ms  0.26%  1.97ms   10.5MiB  15.3%   514KiB
- -----------------------------------------------------------------------------
-Deformed volume is 1.000199977169989</pre><p>We can also check that the deformed volume is indeed close to 1 (as should be for a nearly incompressible material)</p><h2 id="Plain-Program"><a class="docs-heading-anchor" href="#Plain-Program">Plain Program</a><a id="Plain-Program-1"></a><a class="docs-heading-anchor-permalink" href="#Plain-Program" title="Permalink"></a></h2><p>Below follows a version of the program without any comments. The file is also available here: <a href="../quasi_incompressible_hyperelasticity.jl"><code>quasi_incompressible_hyperelasticity.jl</code></a></p><pre><code class="language-julia">using Ferrite, Tensors, TimerOutputs, ProgressMeter
+Deformed volume is 1.000199977169989</pre><p>We can also check that the deformed volume is indeed close to 1 (as should be for a nearly incompressible material)</p><h2 id="Plain-Program"><a class="docs-heading-anchor" href="#Plain-Program">Plain Program</a><a id="Plain-Program-1"></a><a class="docs-heading-anchor-permalink" href="#Plain-Program" title="Permalink"></a></h2><p>Below follows a version of the program without any comments. The file is also available here: <a href="../quasi_incompressible_hyperelasticity.jl"><code>quasi_incompressible_hyperelasticity.jl</code></a></p><pre><code class="language-julia">using Ferrite, Tensors, ProgressMeter
 using BlockArrays, SparseArrays, LinearAlgebra
 
 struct NeoHooke
@@ -806,20 +435,19 @@ function assemble_global!(K::SparseMatrixCSC, f, cellvalues_u::CellVectorValues{
 
     assembler = start_assemble(K, f)
     # Loop over all cells in the grid
-    @timeit &quot;assemble&quot; for cell in CellIterator(dh)
+    for cell in CellIterator(dh)
         global_dofs = celldofs(cell)
         global_dofsu = global_dofs[1:nu]; # first nu dofs are displacement
         global_dofsp = global_dofs[nu + 1:end]; # last np dofs are pressure
         @assert size(global_dofs, 1) == nu + np # sanity check
         ue = w[global_dofsu] # displacement dofs for the current cell
         pe = w[global_dofsp] # pressure dofs for the current cell
-        @timeit &quot;element assemble&quot; assemble_element!(ke, fe, cell, cellvalues_u, cellvalues_p, mp, ue, pe)
+        assemble_element!(ke, fe, cell, cellvalues_u, cellvalues_p, mp, ue, pe)
         assemble!(assembler, global_dofs, fe, ke)
     end
 end;
 
 function solve(interpolation_u, interpolation_p)
-    reset_timer!()
 
     # import the mesh
     grid = importTestGrid()
@@ -855,18 +483,19 @@ function solve(interpolation_u, interpolation_p)
     pvd = paraview_collection(&quot;hyperelasticity_incomp_mixed.pvd&quot;);
     for t ∈ 0.0:Δt:Tf
         # Perform Newton iterations
-        print(&quot;Time is $t&quot;)
         Ferrite.update!(dbc, t)
         apply!(w, dbc)
         newton_itr = -1
-        prog = ProgressMeter.ProgressThresh(NEWTON_TOL, &quot;Solving:&quot;)
+        prog = ProgressMeter.ProgressThresh(NEWTON_TOL, &quot;Solving @ time $t of $Tf;&quot;)
         fill!(ΔΔw, 0.0);
         while true; newton_itr += 1
             assemble_global!(K, f, cellvalues_u, cellvalues_p, dh, mp, w)
             norm_res = norm(f[Ferrite.free_dofs(dbc)])
             apply_zero!(K, f, dbc)
-            ProgressMeter.update!(prog, norm_res; showvalues = [(:iter, newton_itr)])
-
+            # Only display output at specific load steps
+            if t%(5*Δt) == 0
+                ProgressMeter.update!(prog, norm_res; showvalues = [(:iter, newton_itr)])
+            end
             if norm_res &lt; NEWTON_TOL
                 break
             elseif newton_itr &gt; 30
@@ -880,15 +509,11 @@ function solve(interpolation_u, interpolation_p)
         end;
 
         # Save the solution fields
-        @timeit &quot;export&quot; begin
-            vtk_grid(&quot;hyperelasticity_incomp_mixed_$t.vtu&quot;, dh, compress=false) do vtkfile
-                vtk_point_data(vtkfile, dh, w)
-                vtk_save(vtkfile)
-                pvd[t] = vtkfile
-            end
+        vtk_grid(&quot;hyperelasticity_incomp_mixed_$t.vtu&quot;, dh, compress=false) do vtkfile
+            vtk_point_data(vtkfile, dh, w)
+            vtk_save(vtkfile)
+            pvd[t] = vtkfile
         end
-
-        print_timer(title = &quot;Analysis with $(getncells(grid)) elements&quot;, linechars = :ascii)
     end;
     vtk_save(pvd);
     vol_def = calculate_volume_deformed_mesh(w, dh, cellvalues_u);
@@ -900,4 +525,4 @@ quadratic = Lagrange{3, RefTetrahedron, 2}()
 linear = Lagrange{3, RefTetrahedron, 1}()
 vol_def = solve(quadratic, linear);
 
-# This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../linear_shell/">« Linear shell</a><a class="docs-footer-nextpage" href="../../reference/quadrature/">Quadrature »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Thursday 9 September 2021 15:30">Thursday 9 September 2021</span>. Using Julia version 1.6.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+# This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../linear_shell/">« Linear shell</a><a class="docs-footer-nextpage" href="../../reference/quadrature/">Quadrature »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Tuesday 14 September 2021 20:43">Tuesday 14 September 2021</span>. Using Julia version 1.6.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
