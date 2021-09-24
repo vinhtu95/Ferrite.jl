@@ -1,12 +1,16 @@
-using Ferrite, SparseArrays, BlockArrays, OrdinaryDiffEq, LinearAlgebra, UnPack
+using Ferrite, SparseArrays, BlockArrays, LinearAlgebra, UnPack
 
-x_cells = 220
-y_cells = 41
+using OrdinaryDiffEq
+
+x_cells = round(Int, 220)
+y_cells = round(Int, 41)
+x_cells = round(Int, 55/3)                  #hide
+y_cells = round(Int, 41/3)                  #hide
 grid = generate_grid(Quadrilateral, (x_cells, y_cells), Vec{2}((0.0, 0.0)), Vec{2}((2.2, 0.41)));
 
 cell_indices = filter(ci->norm(mean(map(i->grid.nodes[i].x-[0.2,0.2], Ferrite.vertices(grid.cells[ci]))))>0.05, 1:length(grid.cells))
-hole_cell_indices = filter(ci->norm(mean(map(i->grid.nodes[i].x-[0.2,0.2], Ferrite.vertices(grid.cells[ci]))))<=0.05, 1:length(grid.cells))
-
+hole_cell_indices = filter(ci->norm(mean(map(i->grid.nodes[i].x-[0.2,0.2], Ferrite.vertices(grid.cells[ci]))))<=0.05, 1:length(grid.cells));
+# Gather all faces in the ring and touching the ring
 hole_face_ring = Set{FaceIndex}()
 for hci ∈ hole_cell_indices
     push!(hole_face_ring, FaceIndex((hci+1, 4)))
@@ -14,31 +18,34 @@ for hci ∈ hole_cell_indices
     push!(hole_face_ring, FaceIndex((hci-x_cells, 3)))
     push!(hole_face_ring, FaceIndex((hci+x_cells, 1)))
 end
-grid.facesets["hole"] = Set(filter(x->x.idx[1] ∉ hole_cell_indices, collect(hole_face_ring)))
-
+grid.facesets["hole"] = Set(filter(x->x.idx[1] ∉ hole_cell_indices, collect(hole_face_ring)));
+# Finally update the node and cell indices
 cell_indices_map = map(ci->norm(mean(map(i->grid.nodes[i].x-[0.2,0.2], Ferrite.vertices(grid.cells[ci]))))>0.05 ? indexin([ci], cell_indices)[1] : 0, 1:length(grid.cells))
 grid.cells = grid.cells[cell_indices]
 for facesetname in keys(grid.facesets)
     grid.facesets[facesetname] = Set(map(fi -> FaceIndex( cell_indices_map[fi.idx[1]] ,fi.idx[2]), collect(grid.facesets[facesetname])))
-end
+end;
+
+grid = generate_grid(Quadrilateral, (x_cells, y_cells), Vec{2}((0.0, 0.0)), Vec{2}((0.55, 0.41)));   #hide
 
 dim = 2
-T = 5
+T = 10.0
 Δt₀ = 0.01
-Δt_save = 0.05
+Δt_save = 0.1
 
-ν = 0.001 #dynamic viscosity
-vᵢₙ(t) = 1.0 #inflow velocity
+ν = 1.0/1000.0                  #dynamic viscosity
+vᵢₙ(t) = clamp(t, 0.0, 1.0)*1.0 #inflow velocity
+vᵢₙ(t) = clamp(t, 0.0, 1.0)*0.3 #hide
 
 ip_v = Lagrange{dim, RefCube, 2}()
 ip_geom = Lagrange{dim, RefCube, 1}()
-qr_v = QuadratureRule{dim, RefCube}(3)
+qr_v = QuadratureRule{dim, RefCube}(4)
 cellvalues_v = CellVectorValues(qr_v, ip_v, ip_geom);
 
 ip_p = Lagrange{dim, RefCube, 1}()
 #Note that the pressure term comes in combination with a higher order test function...
-qr_p = qr_v
-cellvalues_p = CellScalarValues(qr_p, ip_p);
+qr_p = QuadratureRule{dim, RefCube}(4) # = qr_v
+cellvalues_p = CellScalarValues(qr_p, ip_p, ip_geom);
 
 dh = DofHandler(grid)
 push!(dh, :v, dim, ip_v)
@@ -50,86 +57,109 @@ K = create_sparsity_pattern(dh);
 
 ch = ConstraintHandler(dh);
 
-∂Ω_noslip = union(getfaceset.((grid, ), ["top", "bottom", "hole"])...);
+nosplip_face_names = ["top", "bottom", "hole"];
+nosplip_face_names = ["top", "bottom"]                                  #hide
+∂Ω_noslip = union(getfaceset.((grid, ), nosplip_face_names)...);
 ∂Ω_inflow = getfaceset(grid, "left");
 ∂Ω_free = getfaceset(grid, "right");
 
 noslip_bc = Dirichlet(:v, ∂Ω_noslip, (x, t) -> [0,0], [1,2])
-add!(ch, noslip_bc);
-inflow_bc = Dirichlet(:v, ∂Ω_inflow, (x, t) -> [clamp(t, 0.0, 1.0)*4*vᵢₙ(t)*x[2]*(0.41-x[2])/0.41^2,0], [1,2])
+add!(ch, noslip_bc)
+
+parabolic_inflow_profile((x,y),t) = [4*vᵢₙ(t)*y*(0.41-y)/0.41^2,0]
+inflow_bc = Dirichlet(:v, ∂Ω_inflow, parabolic_inflow_profile, [1,2])
 add!(ch, inflow_bc);
 
 close!(ch)
 update!(ch, 0.0);
 
-function assemble_linear(cellvalues_v::CellVectorValues{dim}, cellvalues_p::CellScalarValues{dim}, ν, M::SparseMatrixCSC, K::SparseMatrixCSC, dh::DofHandler) where {dim}
+function assemble_mass_matrix(cellvalues_v::CellVectorValues{dim}, cellvalues_p::CellScalarValues{dim}, M::SparseMatrixCSC, dh::DofHandler) where {dim}
 
     n_basefuncs_v = getnbasefunctions(cellvalues_v)
     n_basefuncs_p = getnbasefunctions(cellvalues_p)
     n_basefuncs = n_basefuncs_v + n_basefuncs_p
     v▄, p▄ = 1, 2
-    Me = PseudoBlockArray(zeros(n_basefuncs, n_basefuncs), [n_basefuncs_v, n_basefuncs_p], [n_basefuncs_v, n_basefuncs_p])
-    Ke = PseudoBlockArray(zeros(n_basefuncs, n_basefuncs), [n_basefuncs_v, n_basefuncs_p], [n_basefuncs_v, n_basefuncs_p])
+    Mₑ = PseudoBlockArray(zeros(n_basefuncs, n_basefuncs), [n_basefuncs_v, n_basefuncs_p], [n_basefuncs_v, n_basefuncs_p])
 
-    f = zeros(ndofs(dh))
-    stiffness_assembler = start_assemble(K)
-    mass_assembler = start_assemble(M)
+    stiffness_assembler = start_assemble(M)
 
     @inbounds for cell in CellIterator(dh)
 
-        fill!(Me, 0)
-        fill!(Ke, 0)
+        fill!(Mₑ, 0)
+
+        Ferrite.reinit!(cellvalues_v, cell)
+
+        for q_point in 1:getnquadpoints(cellvalues_v)
+            dΩ = getdetJdV(cellvalues_v, q_point)
+
+            #Mass term
+            for i in 1:n_basefuncs_v
+                φᵢ = shape_value(cellvalues_v, q_point, i)
+                for j in 1:n_basefuncs_v
+                    φⱼ = shape_value(cellvalues_v, q_point, j)
+                    Mₑ[BlockIndex((v▄, v▄), (i, j))] += φᵢ ⋅ φⱼ * dΩ
+                end
+            end
+        end
+
+        assemble!(stiffness_assembler, celldofs(cell), Mₑ)
+    end
+    return M
+end
+
+M = assemble_mass_matrix(cellvalues_v, cellvalues_p, M, dh);
+
+function assemble_stokes_matrix(cellvalues_v::CellVectorValues{dim}, cellvalues_p::CellScalarValues{dim}, ν, K::SparseMatrixCSC, dh::DofHandler) where {dim}
+
+    n_basefuncs_v = getnbasefunctions(cellvalues_v)
+    n_basefuncs_p = getnbasefunctions(cellvalues_p)
+    n_basefuncs = n_basefuncs_v + n_basefuncs_p
+    v▄, p▄ = 1, 2
+    Kₑ = PseudoBlockArray(zeros(n_basefuncs, n_basefuncs), [n_basefuncs_v, n_basefuncs_p], [n_basefuncs_v, n_basefuncs_p])
+
+    stiffness_assembler = start_assemble(K)
+
+    @inbounds for cell in CellIterator(dh)
+
+        fill!(Kₑ, 0)
 
         Ferrite.reinit!(cellvalues_v, cell)
         Ferrite.reinit!(cellvalues_p, cell)
 
         for q_point in 1:getnquadpoints(cellvalues_v)
             dΩ = getdetJdV(cellvalues_v, q_point)
-            #Mass term
-            for i in 1:n_basefuncs_v
-                v = shape_value(cellvalues_v, q_point, i)
-                for j in 1:n_basefuncs_v
-                    φ = shape_value(cellvalues_v, q_point, j)
-                    Me[BlockIndex((v▄, v▄),(i, j))] += (v ⋅ φ) * dΩ
-                end
-            end
 
             #Viscosity term
             for i in 1:n_basefuncs_v
-                ∇v = shape_gradient(cellvalues_v, q_point, i)
+                ∇φᵢ = shape_gradient(cellvalues_v, q_point, i)
                 for j in 1:n_basefuncs_v
-                    ∇φ = shape_gradient(cellvalues_v, q_point, j)
-                    Ke[BlockIndex((v▄, v▄), (i, j))] -= ν * (∇v ⊡ ∇φ) * dΩ
+                    ∇φⱼ = shape_gradient(cellvalues_v, q_point, j)
+                    Kₑ[BlockIndex((v▄, v▄), (i, j))] -= ν * ∇φᵢ ⊡ ∇φⱼ * dΩ
                 end
             end
-            #Incompressibility term
-            for i in 1:n_basefuncs_p
-                ψ = shape_value(cellvalues_p, q_point, i)
-                for j in 1:n_basefuncs_v
-                    divv = shape_divergence(cellvalues_v, q_point, j)
-                    Ke[BlockIndex((p▄, v▄), (i, j))] += (ψ * divv) * dΩ
-                end
-            end
-            #Pressure term
-            dΩ = getdetJdV(cellvalues_p, q_point)
-            for i in 1:n_basefuncs_v
-                divφ = shape_divergence(cellvalues_v, q_point, i)
-                for j in 1:n_basefuncs_p
-                    p = shape_value(cellvalues_p, q_point, j)
-                    Ke[BlockIndex((v▄, p▄), (i, j))] += (p * divφ) * dΩ
+            #Pressure + Incompressibility term - note the symmetry.
+            for j in 1:n_basefuncs_p
+                ψ = shape_value(cellvalues_p, q_point, j)
+                for i in 1:n_basefuncs_v
+                    divφ = shape_divergence(cellvalues_v, q_point, i)
+                    Kₑ[BlockIndex((v▄, p▄), (i, j))] += (divφ * ψ) * dΩ
+                    Kₑ[BlockIndex((p▄, v▄), (j, i))] += (ψ * divφ) * dΩ
                 end
             end
         end
 
-        assemble!(stiffness_assembler, celldofs(cell), Ke)
-        assemble!(mass_assembler, celldofs(cell), Me)
+        assemble!(stiffness_assembler, celldofs(cell), Kₑ)
     end
-    return M, K
+    return K
 end
 
-M, K = assemble_linear(cellvalues_v, cellvalues_p, ν, M, K, dh);
+K = assemble_stokes_matrix(cellvalues_v, cellvalues_p, ν, K, dh);
+
+u₀ = zeros(ndofs(dh))
+apply!(u₀, ch)
 
 function OrdinaryDiffEq.initialize!(nlsolver::OrdinaryDiffEq.NLSolver{<:NLNewton,true}, integrator)
+    # This block is copy pasta from OrdinaryDiffEq
     @unpack u,uprev,t,dt,opts = integrator
     @unpack z,tmp,cache = nlsolver
     @unpack weight = cache
@@ -139,7 +169,7 @@ function OrdinaryDiffEq.initialize!(nlsolver::OrdinaryDiffEq.NLSolver{<:NLNewton
     OrdinaryDiffEq.calculate_residuals!(weight, fill!(weight, one(eltype(u))), uprev, u,
                          opts.abstol, opts.reltol, opts.internalnorm, t);
 
-    update!(ch, t);
+    update!(ch, cache.tstep);
 
     apply!(uprev, ch)
     apply!(tmp, ch)
@@ -169,30 +199,28 @@ function (p::FerriteLinSolve)(x,A,b,update_matrix=false;reltol=nothing, kwargs..
     return nothing
 end
 
-u₀ = zeros(ndofs(dh))
-apply!(u₀, ch)
-
 jac_sparsity = sparse(K)
 function navierstokes!(du,u,p,t)
-    K,dh,cellvalues = p
+    K,dh,cellvalues_v = p
     du .= K * u
 
-    n_basefuncs = getnquadpoints(cellvalues)
+    n_basefuncs = getnbasefunctions(cellvalues_v)
 
-    # Nonlinaer contribution
+    # Nonlinear contribution
     for cell in CellIterator(dh)
+        Ferrite.reinit!(cellvalues_v, cell)
         # Trilinear form evaluation
-        v_celldofs = celldofs(cell)
-        Ferrite.reinit!(cellvalues, cell)
-        v_cell = u[v_celldofs[dof_range(dh, :v)]]
-        for q_point in 1:getnquadpoints(cellvalues)
-            dΩ = getdetJdV(cellvalues, q_point)
-            v_div = function_divergence(cellvalues, q_point, v_cell)
-            v_val = function_value(cellvalues, q_point, v_cell)
-            nl_contrib = - v_div * v_val
+        all_celldofs = celldofs(cell)
+        v_celldofs = all_celldofs[dof_range(dh, :v)]
+        v_cell = u[v_celldofs]
+        for q_point in 1:getnquadpoints(cellvalues_v)
+            dΩ = getdetJdV(cellvalues_v, q_point)
+            ∇v = function_gradient(cellvalues_v, q_point, v_cell)
+            v = function_value(cellvalues_v, q_point, v_cell)
             for j in 1:n_basefuncs
-                Nⱼ = shape_value(cellvalues, q_point, j)
-                du[v_celldofs[j]] += nl_contrib ⋅ Nⱼ * dΩ
+                φⱼ = shape_value(cellvalues_v, q_point, j)
+
+                du[v_celldofs[j]] -= ∇v ⋅ v ⋅ φⱼ * dΩ
             end
         end
     end
@@ -201,19 +229,23 @@ rhs = ODEFunction(navierstokes!, mass_matrix=M; jac_prototype=jac_sparsity)
 p = [K, dh, cellvalues_v]
 problem = ODEProblem(rhs, u₀, (0.0,T), p);
 
-sol = solve(problem, MEBDF2(linsolve=FerriteLinSolve(ch)), progress=true, progress_steps=1, dt=Δt₀, saveat=Δt_save, initializealg=NoInit());
+timestepper = ImplicitEuler(linsolve=FerriteLinSolve(ch))
+integrator = init(
+    problem, timestepper, initializealg=NoInit(), dt=Δt₀,
+    adaptive=true, abstol=1e-3, reltol=1e-3,
+    progress=true, progress_steps=1,
+    saveat=Δt_save);
 
 pvd = paraview_collection("vortex-street.pvd");
-
-for (solution,t) in zip(sol.u, sol.t)
+integrator = TimeChoiceIterator(integrator, 0.0:Δt_save:T)
+for (u,t) in integrator
     #compress=false flag because otherwise each vtk file will be stored in memory
     vtk_grid("vortex-street-$t.vtu", dh; compress=false) do vtk
-        vtk_point_data(vtk,dh,solution)
+        vtk_point_data(vtk,dh,u)
         vtk_save(vtk)
         pvd[t] = vtk
     end
 end
-vtk_save(pvd);
 
 # This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl
 
