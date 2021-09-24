@@ -2,15 +2,18 @@ using Ferrite, SparseArrays, BlockArrays, LinearAlgebra, UnPack
 
 using OrdinaryDiffEq
 
-x_cells = round(Int, 220)
-y_cells = round(Int, 41)
+ν = 1.0/1000.0 #dynamic viscosity
+
+dim = 2
+cell_scale_factor = 2.0
+x_cells = round(Int, cell_scale_factor*220)
+y_cells = round(Int, cell_scale_factor*41)
 x_cells = round(Int, 55/3)                  #hide
 y_cells = round(Int, 41/3)                  #hide
 grid = generate_grid(Quadrilateral, (x_cells, y_cells), Vec{2}((0.0, 0.0)), Vec{2}((2.2, 0.41)));
 
 cell_indices = filter(ci->norm(mean(map(i->grid.nodes[i].x-[0.2,0.2], Ferrite.vertices(grid.cells[ci]))))>0.05, 1:length(grid.cells))
 hole_cell_indices = filter(ci->norm(mean(map(i->grid.nodes[i].x-[0.2,0.2], Ferrite.vertices(grid.cells[ci]))))<=0.05, 1:length(grid.cells));
-# Gather all faces in the ring and touching the ring
 hole_face_ring = Set{FaceIndex}()
 for hci ∈ hole_cell_indices
     push!(hole_face_ring, FaceIndex((hci+1, 4)))
@@ -19,7 +22,6 @@ for hci ∈ hole_cell_indices
     push!(hole_face_ring, FaceIndex((hci+x_cells, 1)))
 end
 grid.facesets["hole"] = Set(filter(x->x.idx[1] ∉ hole_cell_indices, collect(hole_face_ring)));
-# Finally update the node and cell indices
 cell_indices_map = map(ci->norm(mean(map(i->grid.nodes[i].x-[0.2,0.2], Ferrite.vertices(grid.cells[ci]))))>0.05 ? indexin([ci], cell_indices)[1] : 0, 1:length(grid.cells))
 grid.cells = grid.cells[cell_indices]
 for facesetname in keys(grid.facesets)
@@ -28,47 +30,40 @@ end;
 
 grid = generate_grid(Quadrilateral, (x_cells, y_cells), Vec{2}((0.0, 0.0)), Vec{2}((0.55, 0.41)));   #hide
 
-dim = 2
 T = 10.0
 Δt₀ = 0.01
 Δt_save = 0.1
 
-ν = 1.0/1000.0                  #dynamic viscosity
-vᵢₙ(t) = clamp(t, 0.0, 1.0)*1.0 #inflow velocity
-vᵢₙ(t) = clamp(t, 0.0, 1.0)*0.3 #hide
-
 ip_v = Lagrange{dim, RefCube, 2}()
 ip_geom = Lagrange{dim, RefCube, 1}()
-qr_v = QuadratureRule{dim, RefCube}(4)
-cellvalues_v = CellVectorValues(qr_v, ip_v, ip_geom);
+qr = QuadratureRule{dim, RefCube}(4)
+cellvalues_v = CellVectorValues(qr, ip_v, ip_geom);
 
 ip_p = Lagrange{dim, RefCube, 1}()
-#Note that the pressure term comes in combination with a higher order test function...
-qr_p = QuadratureRule{dim, RefCube}(4) # = qr_v
-cellvalues_p = CellScalarValues(qr_p, ip_p, ip_geom);
+cellvalues_p = CellScalarValues(qr, ip_p, ip_geom);
 
 dh = DofHandler(grid)
 push!(dh, :v, dim, ip_v)
 push!(dh, :p, 1, ip_p)
 close!(dh);
 
-M = create_sparsity_pattern(dh);
-K = create_sparsity_pattern(dh);
-
 ch = ConstraintHandler(dh);
 
 nosplip_face_names = ["top", "bottom", "hole"];
 nosplip_face_names = ["top", "bottom"]                                  #hide
 ∂Ω_noslip = union(getfaceset.((grid, ), nosplip_face_names)...);
-∂Ω_inflow = getfaceset(grid, "left");
-∂Ω_free = getfaceset(grid, "right");
-
 noslip_bc = Dirichlet(:v, ∂Ω_noslip, (x, t) -> [0,0], [1,2])
 add!(ch, noslip_bc)
 
+∂Ω_inflow = getfaceset(grid, "left");
+
+vᵢₙ(t) = clamp(t, 0.0, 1.0)*1.0 #inflow velocity
+vᵢₙ(t) = clamp(t, 0.0, 1.0)*0.3 #hide
 parabolic_inflow_profile((x,y),t) = [4*vᵢₙ(t)*y*(0.41-y)/0.41^2,0]
 inflow_bc = Dirichlet(:v, ∂Ω_inflow, parabolic_inflow_profile, [1,2])
 add!(ch, inflow_bc);
+
+∂Ω_free = getfaceset(grid, "right");
 
 close!(ch)
 update!(ch, 0.0);
@@ -81,18 +76,14 @@ function assemble_mass_matrix(cellvalues_v::CellVectorValues{dim}, cellvalues_p:
     v▄, p▄ = 1, 2
     Mₑ = PseudoBlockArray(zeros(n_basefuncs, n_basefuncs), [n_basefuncs_v, n_basefuncs_p], [n_basefuncs_v, n_basefuncs_p])
 
-    stiffness_assembler = start_assemble(M)
-
+    mass_assembler = start_assemble(M)
     @inbounds for cell in CellIterator(dh)
-
         fill!(Mₑ, 0)
-
         Ferrite.reinit!(cellvalues_v, cell)
 
         for q_point in 1:getnquadpoints(cellvalues_v)
             dΩ = getdetJdV(cellvalues_v, q_point)
 
-            #Mass term
             for i in 1:n_basefuncs_v
                 φᵢ = shape_value(cellvalues_v, q_point, i)
                 for j in 1:n_basefuncs_v
@@ -101,13 +92,11 @@ function assemble_mass_matrix(cellvalues_v::CellVectorValues{dim}, cellvalues_p:
                 end
             end
         end
-
-        assemble!(stiffness_assembler, celldofs(cell), Mₑ)
+        assemble!(mass_assembler, celldofs(cell), Mₑ)
     end
+
     return M
 end
-
-M = assemble_mass_matrix(cellvalues_v, cellvalues_p, M, dh);
 
 function assemble_stokes_matrix(cellvalues_v::CellVectorValues{dim}, cellvalues_p::CellScalarValues{dim}, ν, K::SparseMatrixCSC, dh::DofHandler) where {dim}
 
@@ -120,7 +109,6 @@ function assemble_stokes_matrix(cellvalues_v::CellVectorValues{dim}, cellvalues_
     stiffness_assembler = start_assemble(K)
 
     @inbounds for cell in CellIterator(dh)
-
         fill!(Kₑ, 0)
 
         Ferrite.reinit!(cellvalues_v, cell)
@@ -129,7 +117,6 @@ function assemble_stokes_matrix(cellvalues_v::CellVectorValues{dim}, cellvalues_
         for q_point in 1:getnquadpoints(cellvalues_v)
             dΩ = getdetJdV(cellvalues_v, q_point)
 
-            #Viscosity term
             for i in 1:n_basefuncs_v
                 ∇φᵢ = shape_gradient(cellvalues_v, q_point, i)
                 for j in 1:n_basefuncs_v
@@ -137,7 +124,7 @@ function assemble_stokes_matrix(cellvalues_v::CellVectorValues{dim}, cellvalues_
                     Kₑ[BlockIndex((v▄, v▄), (i, j))] -= ν * ∇φᵢ ⊡ ∇φⱼ * dΩ
                 end
             end
-            #Pressure + Incompressibility term - note the symmetry.
+
             for j in 1:n_basefuncs_p
                 ψ = shape_value(cellvalues_p, q_point, j)
                 for i in 1:n_basefuncs_v
@@ -153,6 +140,10 @@ function assemble_stokes_matrix(cellvalues_v::CellVectorValues{dim}, cellvalues_
     return K
 end
 
+M = create_sparsity_pattern(dh);
+M = assemble_mass_matrix(cellvalues_v, cellvalues_p, M, dh);
+
+K = create_sparsity_pattern(dh);
 K = assemble_stokes_matrix(cellvalues_v, cellvalues_p, ν, K, dh);
 
 u₀ = zeros(ndofs(dh))
