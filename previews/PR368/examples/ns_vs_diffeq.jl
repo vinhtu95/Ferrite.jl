@@ -30,10 +30,6 @@ end;
 
 grid = generate_grid(Quadrilateral, (x_cells, y_cells), Vec{2}((0.0, 0.0)), Vec{2}((0.55, 0.41)));   #hide
 
-T = 10.0
-Δt₀ = 0.01
-Δt_save = 0.1
-
 ip_v = Lagrange{dim, RefCube, 2}()
 ip_geom = Lagrange{dim, RefCube, 1}()
 qr = QuadratureRule{dim, RefCube}(4)
@@ -53,7 +49,7 @@ nosplip_face_names = ["top", "bottom", "hole"];
 nosplip_face_names = ["top", "bottom"]                                  #hide
 ∂Ω_noslip = union(getfaceset.((grid, ), nosplip_face_names)...);
 noslip_bc = Dirichlet(:v, ∂Ω_noslip, (x, t) -> [0,0], [1,2])
-add!(ch, noslip_bc)
+add!(ch, noslip_bc);
 
 ∂Ω_inflow = getfaceset(grid, "left");
 
@@ -96,7 +92,7 @@ function assemble_mass_matrix(cellvalues_v::CellVectorValues{dim}, cellvalues_p:
     end
 
     return M
-end
+end;
 
 function assemble_stokes_matrix(cellvalues_v::CellVectorValues{dim}, cellvalues_p::CellScalarValues{dim}, ν, K::SparseMatrixCSC, dh::DofHandler) where {dim}
 
@@ -138,7 +134,11 @@ function assemble_stokes_matrix(cellvalues_v::CellVectorValues{dim}, cellvalues_
         assemble!(stiffness_assembler, celldofs(cell), Kₑ)
     end
     return K
-end
+end;
+
+T = 10.0
+Δt₀ = 0.01
+Δt_save = 0.1
 
 M = create_sparsity_pattern(dh);
 M = assemble_mass_matrix(cellvalues_v, cellvalues_p, M, dh);
@@ -147,7 +147,7 @@ K = create_sparsity_pattern(dh);
 K = assemble_stokes_matrix(cellvalues_v, cellvalues_p, ν, K, dh);
 
 u₀ = zeros(ndofs(dh))
-apply!(u₀, ch)
+apply!(u₀, ch);
 
 function OrdinaryDiffEq.initialize!(nlsolver::OrdinaryDiffEq.NLSolver{<:NLNewton,true}, integrator)
     # This block is copy pasta from OrdinaryDiffEq
@@ -167,7 +167,7 @@ function OrdinaryDiffEq.initialize!(nlsolver::OrdinaryDiffEq.NLSolver{<:NLNewton
     apply_zero!(z, ch);
 
     nothing
-end
+end;
 
 mutable struct FerriteLinSolve{CH,F}
     ch::CH
@@ -188,7 +188,7 @@ function (p::FerriteLinSolve)(x,A,b,update_matrix=false;reltol=nothing, kwargs..
     ldiv!(x, p.A, b)
     apply_zero!(x, p.ch)
     return nothing
-end
+end;
 
 jac_sparsity = sparse(K)
 function navierstokes!(du,u,p,t)
@@ -236,7 +236,7 @@ for (u,t) in integrator
         vtk_save(vtk)
         pvd[t] = vtk
     end
-end
+end;
 
 # This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl
 
