@@ -2,7 +2,7 @@ using Ferrite, SparseArrays, BlockArrays, LinearAlgebra, UnPack
 
 using OrdinaryDiffEq
 
-ν = 1.0/1000.0 #dynamic viscosity
+ν = 1.0/1000.0; #dynamic viscosity
 
 dim = 2
 cell_scale_factor = 2.0
@@ -174,10 +174,12 @@ mutable struct FerriteLinSolve{CH,F}
     factorization::F
     A
 end
+
 FerriteLinSolve(ch) = FerriteLinSolve(ch,lu,nothing)
 function (p::FerriteLinSolve)(::Type{Val{:init}},f,u0_prototype)
     FerriteLinSolve(ch)
 end
+
 function (p::FerriteLinSolve)(x,A,b,update_matrix=false;reltol=nothing, kwargs...)
     if update_matrix
         # Apply Dirichlet BCs
@@ -211,7 +213,7 @@ function navierstokes!(du,u,p,t)
             for j in 1:n_basefuncs
                 φⱼ = shape_value(cellvalues_v, q_point, j)
 
-                du[v_celldofs[j]] -= ∇v ⋅ v ⋅ φⱼ * dΩ
+                du[v_celldofs[j]] -= v ⋅ ∇v' ⋅ φⱼ * dΩ
             end
         end
     end
@@ -236,7 +238,8 @@ for (u,t) in integrator
         vtk_save(vtk)
         pvd[t] = vtk
     end
-end;
+end
+vtk_save(pvd);
 
 # This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl
 
