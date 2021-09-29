@@ -15,7 +15,7 @@
       0  &amp; 0
  \end{bmatrix}}_{:=M}
  \begin{bmatrix}
-     \mathrm{d}_t\hat{\mathbf{v}} \\
+     \mathrm{d}_t\hat{v} \\
      \mathrm{d}\hat{p}
  \end{bmatrix}
  =
@@ -24,14 +24,14 @@
       B &amp; 0
  \end{bmatrix}}_{:=K}
  \begin{bmatrix}
-     \hat{\mathbf{v}} \\
+     \hat{v} \\
      \hat{p}
  \end{bmatrix}
  +
  \begin{bmatrix}
-     N(\hat{\mathbf{v}}, \hat{\mathbf{v}}, \hat{\varphi}) \\
+     N(\hat{v}, \hat{v}, \hat{\varphi}) \\
      0
- \end{bmatrix}\]</p><p>Here <span>$M$</span> is the singular block mass matrix, <span>$K$</span> is the discretized Stokes operator and <span>$N$</span> the non-linear advection term.</p><h2 id="Commented-Program"><a class="docs-heading-anchor" href="#Commented-Program">Commented Program</a><a id="Commented-Program-1"></a><a class="docs-heading-anchor-permalink" href="#Commented-Program" title="Permalink"></a></h2><p>Now we solve the problem in Ferrite with <a href="https://github.com/SciML/DifferentialEquations.jl">DifferentialEquations.jl</a>. What follows is a program spliced with comments. The full program, without comments, can be found in the next <a href="#ns_vs_diffeq-plain-program">section</a>.</p><p>First we load Ferrite, and some other packages we need</p><pre><code class="language-julia hljs">using Ferrite, SparseArrays, BlockArrays, LinearAlgebra, UnPack</code></pre><p>Since we do not need the complete DifferentialEquations suite, we just load the required ODE infrastructure, which can also handle DAEs in mass matrix form.</p><pre><code class="language-julia hljs">using OrdinaryDiffEq</code></pre><p>We start off by defining our only material parameter.</p><pre><code class="language-julia hljs">ν = 1.0/1000.0; #dynamic viscosity</code></pre><p>Next a fine 2D rectangular grid has to be generated. We leave the cell size parametric for flexibility when playing around with the code. Note that the mesh is pretty fine, leading to a high memory consumption when feeding the equation system to direct solvers.</p><pre><code class="language-julia hljs">dim = 2
+ \end{bmatrix}\]</p><p>Here <span>$M$</span> is the singular block mass matrix, <span>$K$</span> is the discretized Stokes operator and <span>$N$</span> the non-linear advection term. <span>$\hat{v}$</span> and <span>$\hat{p}$</span> represent the nodal values of the discretizations of <span>$v$</span> and <span>$p$</span> respectively, while <span>$\hat{\varphi}$</span> is the choice for the test function in the discretization. The hats are dropped in the implementation and only for clarity in this section stated.</p><h2 id="Commented-Program"><a class="docs-heading-anchor" href="#Commented-Program">Commented Program</a><a id="Commented-Program-1"></a><a class="docs-heading-anchor-permalink" href="#Commented-Program" title="Permalink"></a></h2><p>Now we solve the problem in Ferrite with <a href="https://github.com/SciML/DifferentialEquations.jl">DifferentialEquations.jl</a>. What follows is a program spliced with comments. The full program, without comments, can be found in the next <a href="#ns_vs_diffeq-plain-program">section</a>.</p><p>First we load Ferrite, and some other packages we need</p><pre><code class="language-julia hljs">using Ferrite, SparseArrays, BlockArrays, LinearAlgebra, UnPack</code></pre><p>Since we do not need the complete DifferentialEquations suite, we just load the required ODE infrastructure, which can also handle DAEs in mass matrix form.</p><pre><code class="language-julia hljs">using OrdinaryDiffEq</code></pre><p>We start off by defining our only material parameter.</p><pre><code class="language-julia hljs">ν = 1.0/1000.0; #dynamic viscosity</code></pre><p>Next a fine 2D rectangular grid has to be generated. We leave the cell size parametric for flexibility when playing around with the code. Note that the mesh is pretty fine, leading to a high memory consumption when feeding the equation system to direct solvers.</p><pre><code class="language-julia hljs">dim = 2
 cell_scale_factor = 2.0
 x_cells = round(Int, cell_scale_factor*220)
 y_cells = round(Int, cell_scale_factor*41)
@@ -139,49 +139,20 @@ M = assemble_mass_matrix(cellvalues_v, cellvalues_p, M, dh);
 
 K = create_sparsity_pattern(dh);
 K = assemble_stokes_matrix(cellvalues_v, cellvalues_p, ν, K, dh);</code></pre><p>These are our initial conditions. We start from the zero solution, because it is trivially admissible if the Dirichlet conditions are zero everywhere on the Dirichlet boundary for t=0. Note that the time stepper is also doing fine if the Dirichlet condition is non-zero and not too pathological.</p><pre><code class="language-julia hljs">u₀ = zeros(ndofs(dh))
-apply!(u₀, ch);</code></pre><p>At the time of writing this example we have no clean way to hook into the nonlinear solver backend to apply the Dirichlet BCs. As a hotfix we override the newton initialization. We cannot solve all emerging issues by developing a customized newton algorithm here. This hack should only be seen as an intermediate step towards integration with OrdinaryDiffEq.jl.</p><pre><code class="language-julia hljs">function OrdinaryDiffEq.initialize!(nlsolver::OrdinaryDiffEq.NLSolver{&lt;:NLNewton,true}, integrator)
-    # This block is copy pasta from OrdinaryDiffEq
-    @unpack u,uprev,t,dt,opts = integrator
-    @unpack z,tmp,cache = nlsolver
-    @unpack weight = cache
-
-    cache.invγdt = inv(dt * nlsolver.γ)
-    cache.tstep = integrator.t + nlsolver.c * dt
-    OrdinaryDiffEq.calculate_residuals!(weight, fill!(weight, one(eltype(u))), uprev, u,
-                         opts.abstol, opts.reltol, opts.internalnorm, t);</code></pre><p>Before starting the nonlinear solve we have to set the time correctly. Note that ch is a global variable for now.</p><pre><code class="language-julia hljs">    update!(ch, cache.tstep);</code></pre><p>The update of <code>u</code> takes <code>uprev + z</code> or <code>tmp + z</code> most of the time, so we have to enforce Dirichlet BCs here. Note that these mutations may break the error estimators.</p><pre><code class="language-julia hljs">    apply!(uprev, ch)
-    apply!(tmp, ch)
-    apply_zero!(z, ch);
-
-    nothing
-end;</code></pre><p>For the linear equations we can cleanly integrate with the linear solver interface provided by the DifferentialEquations ecosystem. We use a direct solver for simplicity, altough it comes with some issues. Implementing GMRES with efficient preconditioner is left open for future work.</p><pre><code class="language-julia hljs">mutable struct FerriteLinSolve{CH,F,T&lt;:Factorization}
-    ch::CH
-    factorization::F
-    A::T
+apply!(u₀, ch);</code></pre><p>DifferentialEquations assumes dense matrices by default, which is not feasible for semi-discretization of finite element models. We communicate that a sparse matrix with specified pattern should be utilized through the <code>jac_prototyp</code> argument. It is simple to see that the Jacobian and the stiffness matrix share the same sparsity pattern, since they share the same relation between trial and test functions.</p><pre><code class="language-julia hljs">jac_sparsity = sparse(K);</code></pre><p>To apply the nonlinear portion of the Navier-Stokes problem we simply hand over the dof handler and cell values to the right hand side as a parameter. Further the pre-assembled linear part (which is time independent) is passed to save some runtime. To apply the time-dependent Dirichlet BCs, we also hand over the constraint handler. The basic idea to apply the Dirichlet BCs consistently is that we copy the current solution <code>u</code>, apply the Dirichlet BCs on the copy, evaluate the discretized right hand side of the Navier-Stokes equations with this vector and finally set the rhs to zero on every constraint. This way we obtain a correct solution for all dofs which are not Dirichlet constrained. These dofs are then corrected in a post-processing step, when evaluating the solution vector at specific time points. It should be finally noted that this <em>trick does not work</em> out of the box <em>for constraining algebraic portion</em> of the DAE, i.e. if we would like to put a Dirichlet BC on pressure dofs. Here we have to set &quot;<span>$d_t p_i = p_i$</span>&quot; instead of &quot;<span>$d_t p_i = 0$</span>&quot;, because otherwise the equation system gets singular. This is obvious when we also take into account that our mass matrix is zero for these dofs, such that we obtain the equation <span>$0 \cdot d_t p_i = p_i$</span>.</p><pre><code class="language-julia hljs">struct RHSparams
+    K::SparseMatrixCSC
+    ch::ConstraintHandler
+    dh::DofHandler
+    cellvalues_v::CellVectorValues
 end
-
-FerriteLinSolve(ch) = FerriteLinSolve(ch,lu,lu(sparse(ones(1,1))))
-function (p::FerriteLinSolve)(::Type{Val{:init}},f,u0_prototype)
-    FerriteLinSolve(p.ch)
-end
-
-function (p::FerriteLinSolve)(x,A,b,update_matrix=false;reltol=nothing, kwargs...)
-    if update_matrix
-        # Apply Dirichlet BCs
-        apply_zero!(A, b, p.ch)
-        # Update factorization
-        p.A = p.factorization(A)
-    end
-    ldiv!(x, p.A, b)
-    apply_zero!(x, p.ch)
-    return nothing
-end;</code></pre><p>DifferentialEquations assumes dense matrices by default, which is not feasible for semi-discretization of finite element models. We communicate that a sparse matrix with specified pattern should be utilized through the <code>jac_prototyp</code> argument. Additionally, we have to provide the mass matrix. To apply the nonlinear portion of the Navier-Stokes problem we simply hand over the dof handler to the right hand side as a parameter in addition to the pre-assembled linear part (which is time independent) to save some runtime.</p><pre><code class="language-julia hljs">jac_sparsity = sparse(K)
-function navierstokes!(du,u,p,t)
-    K,dh,cellvalues_v = p
+p = RHSparams(K, ch, dh, cellvalues_v)
+function navierstokes!(du,u_uc,p,t)</code></pre><p>Unpack the struct to save some allocations</p><pre><code class="language-julia hljs">    @unpack K,ch,dh,cellvalues_v = p</code></pre><p>We start by applying the time-dependent Dirichlet BCs. Note that we are not allowed to mutate <code>u_uc</code>! We also can not pre-allocate this variable if we want to use AD to derive the Jacobian matrix, which appears in the utilized implicit Euler. If we hand over the Jacobian analytically to the solver, or when utilizing a method which does not require building the Jacobian, then we could also hand over a buffer for <code>u</code> in our RHSparams structure to save the allocations made here.</p><pre><code class="language-julia hljs">    u = u_uc
+    update!(ch, t)
+    apply!(u, ch)</code></pre><p>Now we apply the rhs of the Navier-Stokes equations</p><pre><code class="language-julia hljs">    # Linear contribution (Stokes operator)
     du .= K * u
 
-    n_basefuncs = getnbasefunctions(cellvalues_v)
-
     # Nonlinear contribution
+    n_basefuncs = getnbasefunctions(cellvalues_v)
     for cell in CellIterator(dh)
         Ferrite.reinit!(cellvalues_v, cell)
         # Trilinear form evaluation
@@ -196,11 +167,10 @@ function navierstokes!(du,u,p,t)
                 φⱼ = shape_value(cellvalues_v, q_point, j)</code></pre><p>Note that in Tensors.jl the definition <span>$\textrm{grad} v = \nabla v$</span> holds. With this information it can be quickly shown in index notation that</p><p class="math-container">\[[(v \cdot \nabla) v]_i = v_j (\partial_j v_i) = [v (\nabla v)^T]_i\]</p><p>where we should pay attentation to the transpose of the gradient.</p><pre><code class="language-julia hljs">                du[v_celldofs[j]] -= v ⋅ ∇v&#39; ⋅ φⱼ * dΩ
             end
         end
-    end
-end;
-rhs = ODEFunction(navierstokes!, mass_matrix=M; jac_prototype=jac_sparsity)
-p = [K, dh, cellvalues_v]
-problem = ODEProblem(rhs, u₀, (0.0,T), p);</code></pre><p>Now we can put everything together by specifying how to solve the problem. We want to use the adaptive implicit Euler method with our custom linear solver, which helps in the enforcement of the Dirichlet BCs. Further we enable the progress bar with the <code>progess</code> and <code>progress_steps</code> arguments. Finally we have to communicate the time step length and initialization algorithm. Since we start with a valid initial state we do not use one of DifferentialEquations.jl initialization algorithms. NOTE: At the time of writing this <a href="https://github.com/SciML/OrdinaryDiffEq.jl/issues/1019">no index 2 initialization is implemented</a>.</p><p>To visualize the result we export the grid and our fields to VTK-files, which can be viewed in <a href="https://www.paraview.org/">ParaView</a> by utilizing the corresponding pvd file.</p><pre><code class="language-julia hljs">timestepper = ImplicitEuler(linsolve=FerriteLinSolve(ch))
+    end</code></pre><p>Finally, we have to ingore the evolution of the Dirichlet BCs for now. The solution vector will be corrected in a post-processing step.</p><pre><code class="language-julia hljs">    apply_zero!(du, ch)
+end;</code></pre><p>Finally, together with our pre-assembled mass matrix, we are now able to define our problem in mass matrix form.</p><pre><code class="language-julia hljs">rhs = ODEFunction(navierstokes!, mass_matrix=M; jac_prototype=jac_sparsity)
+problem = ODEProblem(rhs, u₀, (0.0,T), p);</code></pre><p>Now we can put everything together by specifying how to solve the problem. We want to use the adaptive implicit Euler method with our custom linear solver, which helps in the enforcement of the Dirichlet BCs. Further we enable the progress bar with the <code>progess</code> and <code>progress_steps</code> arguments. Finally we have to communicate the time step length and initialization algorithm. Since we start with a valid initial state we do not use one of DifferentialEquations.jl initialization algorithms. NOTE: At the time of writing this <a href="https://github.com/SciML/OrdinaryDiffEq.jl/issues/1019">no Hessenberg index 2 initialization is implemented</a>.</p><p>To visualize the result we export the grid and our fields to VTK-files, which can be viewed in <a href="https://www.paraview.org/">ParaView</a> by utilizing the corresponding pvd file.</p><pre><code class="language-julia hljs">#timestepper = ImplicitEuler(linsolve=FerriteLinSolve(ch))
+timestepper = ImplicitEuler()
 integrator = init(
     problem, timestepper, initializealg=NoInit(), dt=Δt₀,
     adaptive=true, abstol=1e-3, reltol=1e-3,
@@ -209,7 +179,9 @@ integrator = init(
 
 pvd = paraview_collection(&quot;vortex-street.pvd&quot;);
 integrator = TimeChoiceIterator(integrator, 0.0:Δt_save:T)
-for (u,t) in integrator
+for (u_uc,t) in integrator</code></pre><p>We ignored the Dirichlet constraints in the solution vector up to now, so we have to bring them back now.</p><pre><code class="language-julia hljs">    update!(ch, t)
+    u = u_uc
+    apply!(u, ch)
     #compress=false flag because otherwise each vtk file will be stored in memory
     vtk_grid(&quot;vortex-street-$t.vtu&quot;, dh; compress=false) do vtk
         vtk_point_data(vtk,dh,u)
@@ -363,57 +335,28 @@ K = assemble_stokes_matrix(cellvalues_v, cellvalues_p, ν, K, dh);
 u₀ = zeros(ndofs(dh))
 apply!(u₀, ch);
 
-function OrdinaryDiffEq.initialize!(nlsolver::OrdinaryDiffEq.NLSolver{&lt;:NLNewton,true}, integrator)
-    # This block is copy pasta from OrdinaryDiffEq
-    @unpack u,uprev,t,dt,opts = integrator
-    @unpack z,tmp,cache = nlsolver
-    @unpack weight = cache
+jac_sparsity = sparse(K);
 
-    cache.invγdt = inv(dt * nlsolver.γ)
-    cache.tstep = integrator.t + nlsolver.c * dt
-    OrdinaryDiffEq.calculate_residuals!(weight, fill!(weight, one(eltype(u))), uprev, u,
-                         opts.abstol, opts.reltol, opts.internalnorm, t);
-
-    update!(ch, cache.tstep);
-
-    apply!(uprev, ch)
-    apply!(tmp, ch)
-    apply_zero!(z, ch);
-
-    nothing
-end;
-
-mutable struct FerriteLinSolve{CH,F,T&lt;:Factorization}
-    ch::CH
-    factorization::F
-    A::T
+struct RHSparams
+    K::SparseMatrixCSC
+    ch::ConstraintHandler
+    dh::DofHandler
+    cellvalues_v::CellVectorValues
 end
+p = RHSparams(K, ch, dh, cellvalues_v)
+function navierstokes!(du,u_uc,p,t)
 
-FerriteLinSolve(ch) = FerriteLinSolve(ch,lu,lu(sparse(ones(1,1))))
-function (p::FerriteLinSolve)(::Type{Val{:init}},f,u0_prototype)
-    FerriteLinSolve(p.ch)
-end
+    @unpack K,ch,dh,cellvalues_v = p
 
-function (p::FerriteLinSolve)(x,A,b,update_matrix=false;reltol=nothing, kwargs...)
-    if update_matrix
-        # Apply Dirichlet BCs
-        apply_zero!(A, b, p.ch)
-        # Update factorization
-        p.A = p.factorization(A)
-    end
-    ldiv!(x, p.A, b)
-    apply_zero!(x, p.ch)
-    return nothing
-end;
+    u = u_uc
+    update!(ch, t)
+    apply!(u, ch)
 
-jac_sparsity = sparse(K)
-function navierstokes!(du,u,p,t)
-    K,dh,cellvalues_v = p
+    # Linear contribution (Stokes operator)
     du .= K * u
 
-    n_basefuncs = getnbasefunctions(cellvalues_v)
-
     # Nonlinear contribution
+    n_basefuncs = getnbasefunctions(cellvalues_v)
     for cell in CellIterator(dh)
         Ferrite.reinit!(cellvalues_v, cell)
         # Trilinear form evaluation
@@ -431,12 +374,15 @@ function navierstokes!(du,u,p,t)
             end
         end
     end
+
+    apply_zero!(du, ch)
 end;
+
 rhs = ODEFunction(navierstokes!, mass_matrix=M; jac_prototype=jac_sparsity)
-p = [K, dh, cellvalues_v]
 problem = ODEProblem(rhs, u₀, (0.0,T), p);
 
-timestepper = ImplicitEuler(linsolve=FerriteLinSolve(ch))
+#timestepper = ImplicitEuler(linsolve=FerriteLinSolve(ch))
+timestepper = ImplicitEuler()
 integrator = init(
     problem, timestepper, initializealg=NoInit(), dt=Δt₀,
     adaptive=true, abstol=1e-3, reltol=1e-3,
@@ -445,7 +391,11 @@ integrator = init(
 
 pvd = paraview_collection(&quot;vortex-street.pvd&quot;);
 integrator = TimeChoiceIterator(integrator, 0.0:Δt_save:T)
-for (u,t) in integrator
+for (u_uc,t) in integrator
+
+    update!(ch, t)
+    u = u_uc
+    apply!(u, ch)
     #compress=false flag because otherwise each vtk file will be stored in memory
     vtk_grid(&quot;vortex-street-$t.vtu&quot;, dh; compress=false) do vtk
         vtk_point_data(vtk,dh,u)
@@ -455,4 +405,4 @@ for (u,t) in integrator
 end
 vtk_save(pvd);
 
-# This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../quasi_incompressible_hyperelasticity/">« Nearly Incompressible Hyperelasticity</a><a class="docs-footer-nextpage" href="../../reference/quadrature/">Quadrature »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.6 on <span class="colophon-date" title="Wednesday 29 September 2021 21:35">Wednesday 29 September 2021</span>. Using Julia version 1.6.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+# This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../quasi_incompressible_hyperelasticity/">« Nearly Incompressible Hyperelasticity</a><a class="docs-footer-nextpage" href="../../reference/quadrature/">Quadrature »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.6 on <span class="colophon-date" title="Wednesday 29 September 2021 23:07">Wednesday 29 September 2021</span>. Using Julia version 1.6.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

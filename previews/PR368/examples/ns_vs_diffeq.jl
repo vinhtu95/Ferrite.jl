@@ -149,57 +149,28 @@ K = assemble_stokes_matrix(cellvalues_v, cellvalues_p, ν, K, dh);
 u₀ = zeros(ndofs(dh))
 apply!(u₀, ch);
 
-function OrdinaryDiffEq.initialize!(nlsolver::OrdinaryDiffEq.NLSolver{<:NLNewton,true}, integrator)
-    # This block is copy pasta from OrdinaryDiffEq
-    @unpack u,uprev,t,dt,opts = integrator
-    @unpack z,tmp,cache = nlsolver
-    @unpack weight = cache
+jac_sparsity = sparse(K);
 
-    cache.invγdt = inv(dt * nlsolver.γ)
-    cache.tstep = integrator.t + nlsolver.c * dt
-    OrdinaryDiffEq.calculate_residuals!(weight, fill!(weight, one(eltype(u))), uprev, u,
-                         opts.abstol, opts.reltol, opts.internalnorm, t);
-
-    update!(ch, cache.tstep);
-
-    apply!(uprev, ch)
-    apply!(tmp, ch)
-    apply_zero!(z, ch);
-
-    nothing
-end;
-
-mutable struct FerriteLinSolve{CH,F,T<:Factorization}
-    ch::CH
-    factorization::F
-    A::T
+struct RHSparams
+    K::SparseMatrixCSC
+    ch::ConstraintHandler
+    dh::DofHandler
+    cellvalues_v::CellVectorValues
 end
+p = RHSparams(K, ch, dh, cellvalues_v)
+function navierstokes!(du,u_uc,p,t)
 
-FerriteLinSolve(ch) = FerriteLinSolve(ch,lu,lu(sparse(ones(1,1))))
-function (p::FerriteLinSolve)(::Type{Val{:init}},f,u0_prototype)
-    FerriteLinSolve(p.ch)
-end
+    @unpack K,ch,dh,cellvalues_v = p
 
-function (p::FerriteLinSolve)(x,A,b,update_matrix=false;reltol=nothing, kwargs...)
-    if update_matrix
-        # Apply Dirichlet BCs
-        apply_zero!(A, b, p.ch)
-        # Update factorization
-        p.A = p.factorization(A)
-    end
-    ldiv!(x, p.A, b)
-    apply_zero!(x, p.ch)
-    return nothing
-end;
+    u = u_uc
+    update!(ch, t)
+    apply!(u, ch)
 
-jac_sparsity = sparse(K)
-function navierstokes!(du,u,p,t)
-    K,dh,cellvalues_v = p
+    # Linear contribution (Stokes operator)
     du .= K * u
 
-    n_basefuncs = getnbasefunctions(cellvalues_v)
-
     # Nonlinear contribution
+    n_basefuncs = getnbasefunctions(cellvalues_v)
     for cell in CellIterator(dh)
         Ferrite.reinit!(cellvalues_v, cell)
         # Trilinear form evaluation
@@ -217,12 +188,15 @@ function navierstokes!(du,u,p,t)
             end
         end
     end
+
+    apply_zero!(du, ch)
 end;
+
 rhs = ODEFunction(navierstokes!, mass_matrix=M; jac_prototype=jac_sparsity)
-p = [K, dh, cellvalues_v]
 problem = ODEProblem(rhs, u₀, (0.0,T), p);
 
-timestepper = ImplicitEuler(linsolve=FerriteLinSolve(ch))
+#timestepper = ImplicitEuler(linsolve=FerriteLinSolve(ch))
+timestepper = ImplicitEuler()
 integrator = init(
     problem, timestepper, initializealg=NoInit(), dt=Δt₀,
     adaptive=true, abstol=1e-3, reltol=1e-3,
@@ -231,7 +205,11 @@ integrator = init(
 
 pvd = paraview_collection("vortex-street.pvd");
 integrator = TimeChoiceIterator(integrator, 0.0:Δt_save:T)
-for (u,t) in integrator
+for (u_uc,t) in integrator
+
+    update!(ch, t)
+    u = u_uc
+    apply!(u, ch)
     #compress=false flag because otherwise each vtk file will be stored in memory
     vtk_grid("vortex-street-$t.vtu", dh; compress=false) do vtk
         vtk_point_data(vtk,dh,u)
