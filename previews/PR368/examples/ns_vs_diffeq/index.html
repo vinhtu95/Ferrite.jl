@@ -153,15 +153,15 @@ apply!(u₀, ch);</code></pre><p>At the time of writing this example we have no 
     apply_zero!(z, ch);
 
     nothing
-end;</code></pre><p>For the linear equations we can cleanly integrate with the linear solver interface provided by the DifferentialEquations ecosystem. We use a direct solver for simplicity, altough it comes with some issues. Implementing GMRES with efficient preconditioner is left open for future work. It should also be noted that A can in theory take more types, for example some block sparse type or just some discrete matrix-free operator.</p><pre><code class="language-julia hljs">mutable struct FerriteLinSolve{CH,F}
+end;</code></pre><p>For the linear equations we can cleanly integrate with the linear solver interface provided by the DifferentialEquations ecosystem. We use a direct solver for simplicity, altough it comes with some issues. Implementing GMRES with efficient preconditioner is left open for future work.</p><pre><code class="language-julia hljs">mutable struct FerriteLinSolve{CH,F,T&lt;:Factorization}
     ch::CH
     factorization::F
-    A
+    A::T
 end
 
-FerriteLinSolve(ch) = FerriteLinSolve(ch,lu,nothing)
+FerriteLinSolve(ch) = FerriteLinSolve(ch,lu,lu(sparse(ones(1,1))))
 function (p::FerriteLinSolve)(::Type{Val{:init}},f,u0_prototype)
-    FerriteLinSolve(ch)
+    FerriteLinSolve(p.ch)
 end
 
 function (p::FerriteLinSolve)(x,A,b,update_matrix=false;reltol=nothing, kwargs...)
@@ -383,15 +383,15 @@ function OrdinaryDiffEq.initialize!(nlsolver::OrdinaryDiffEq.NLSolver{&lt;:NLNew
     nothing
 end;
 
-mutable struct FerriteLinSolve{CH,F}
+mutable struct FerriteLinSolve{CH,F,T&lt;:Factorization}
     ch::CH
     factorization::F
-    A
+    A::T
 end
 
-FerriteLinSolve(ch) = FerriteLinSolve(ch,lu,nothing)
+FerriteLinSolve(ch) = FerriteLinSolve(ch,lu,lu(sparse(ones(1,1))))
 function (p::FerriteLinSolve)(::Type{Val{:init}},f,u0_prototype)
-    FerriteLinSolve(ch)
+    FerriteLinSolve(p.ch)
 end
 
 function (p::FerriteLinSolve)(x,A,b,update_matrix=false;reltol=nothing, kwargs...)
@@ -455,4 +455,4 @@ for (u,t) in integrator
 end
 vtk_save(pvd);
 
-# This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../quasi_incompressible_hyperelasticity/">« Nearly Incompressible Hyperelasticity</a><a class="docs-footer-nextpage" href="../../reference/quadrature/">Quadrature »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.6 on <span class="colophon-date" title="Wednesday 29 September 2021 19:41">Wednesday 29 September 2021</span>. Using Julia version 1.6.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+# This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../quasi_incompressible_hyperelasticity/">« Nearly Incompressible Hyperelasticity</a><a class="docs-footer-nextpage" href="../../reference/quadrature/">Quadrature »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.6 on <span class="colophon-date" title="Wednesday 29 September 2021 21:35">Wednesday 29 September 2021</span>. Using Julia version 1.6.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

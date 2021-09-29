@@ -169,15 +169,15 @@ function OrdinaryDiffEq.initialize!(nlsolver::OrdinaryDiffEq.NLSolver{<:NLNewton
     nothing
 end;
 
-mutable struct FerriteLinSolve{CH,F}
+mutable struct FerriteLinSolve{CH,F,T<:Factorization}
     ch::CH
     factorization::F
-    A
+    A::T
 end
 
-FerriteLinSolve(ch) = FerriteLinSolve(ch,lu,nothing)
+FerriteLinSolve(ch) = FerriteLinSolve(ch,lu,lu(sparse(ones(1,1))))
 function (p::FerriteLinSolve)(::Type{Val{:init}},f,u0_prototype)
-    FerriteLinSolve(ch)
+    FerriteLinSolve(p.ch)
 end
 
 function (p::FerriteLinSolve)(x,A,b,update_matrix=false;reltol=nothing, kwargs...)
