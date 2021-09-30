@@ -65,13 +65,14 @@ close!(ch)
 update!(ch, 0.0);
 
 function assemble_mass_matrix(cellvalues_v::CellVectorValues{dim}, cellvalues_p::CellScalarValues{dim}, M::SparseMatrixCSC, dh::DofHandler) where {dim}
-
+    # Allocate a buffer for the local matrix and some helpers, together with the assembler.
     n_basefuncs_v = getnbasefunctions(cellvalues_v)
     n_basefuncs_p = getnbasefunctions(cellvalues_p)
     n_basefuncs = n_basefuncs_v + n_basefuncs_p
     v▄, p▄ = 1, 2
     Mₑ = PseudoBlockArray(zeros(n_basefuncs, n_basefuncs), [n_basefuncs_v, n_basefuncs_p], [n_basefuncs_v, n_basefuncs_p])
 
+    # It follows the assembly loop as explained in the basic tutorials.
     mass_assembler = start_assemble(M)
     @inbounds for cell in CellIterator(dh)
         fill!(Mₑ, 0)
@@ -79,7 +80,7 @@ function assemble_mass_matrix(cellvalues_v::CellVectorValues{dim}, cellvalues_p:
 
         for q_point in 1:getnquadpoints(cellvalues_v)
             dΩ = getdetJdV(cellvalues_v, q_point)
-
+            # Remember that we assemble a vector mass term, hence the dot product.
             for i in 1:n_basefuncs_v
                 φᵢ = shape_value(cellvalues_v, q_point, i)
                 for j in 1:n_basefuncs_v
@@ -95,16 +96,17 @@ function assemble_mass_matrix(cellvalues_v::CellVectorValues{dim}, cellvalues_p:
 end;
 
 function assemble_stokes_matrix(cellvalues_v::CellVectorValues{dim}, cellvalues_p::CellScalarValues{dim}, ν, K::SparseMatrixCSC, dh::DofHandler) where {dim}
-
+    # Again, some buffers and helpers
     n_basefuncs_v = getnbasefunctions(cellvalues_v)
     n_basefuncs_p = getnbasefunctions(cellvalues_p)
     n_basefuncs = n_basefuncs_v + n_basefuncs_p
     v▄, p▄ = 1, 2
     Kₑ = PseudoBlockArray(zeros(n_basefuncs, n_basefuncs), [n_basefuncs_v, n_basefuncs_p], [n_basefuncs_v, n_basefuncs_p])
 
+    # Assembly loop
     stiffness_assembler = start_assemble(K)
-
     @inbounds for cell in CellIterator(dh)
+        # Don't forget to initialize everything
         fill!(Kₑ, 0)
 
         Ferrite.reinit!(cellvalues_v, cell)
@@ -131,6 +133,7 @@ function assemble_stokes_matrix(cellvalues_v::CellVectorValues{dim}, cellvalues_
             end
         end
 
+        # Assemble `Kₑ` into the Stokes matrix `K`.
         assemble!(stiffness_assembler, celldofs(cell), Kₑ)
     end
     return K
@@ -170,11 +173,10 @@ function navierstokes!(du,u_uc,p,t)
     # Linear contribution (Stokes operator)
     du .= K * u
 
-    # Nonlinear contribution
+    # nonlinear contribution
     n_basefuncs = getnbasefunctions(cellvalues_v)
     for cell in CellIterator(dh)
         Ferrite.reinit!(cellvalues_v, cell)
-        # Trilinear form evaluation
         all_celldofs = celldofs(cell)
         v_celldofs = all_celldofs[dof_range(dh, :v)]
         v_cell = u[v_celldofs]
