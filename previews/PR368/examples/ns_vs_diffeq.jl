@@ -158,6 +158,7 @@ struct RHSparams
     cellvalues_v::CellVectorValues
 end
 p = RHSparams(K, ch, dh, cellvalues_v)
+
 function navierstokes!(du,u_uc,p,t)
 
     @unpack K,ch,dh,cellvalues_v = p
@@ -195,7 +196,6 @@ end;
 rhs = ODEFunction(navierstokes!, mass_matrix=M; jac_prototype=jac_sparsity)
 problem = ODEProblem(rhs, u₀, (0.0,T), p);
 
-#timestepper = ImplicitEuler(linsolve=FerriteLinSolve(ch))
 timestepper = ImplicitEuler()
 integrator = init(
     problem, timestepper, initializealg=NoInit(), dt=Δt₀,
