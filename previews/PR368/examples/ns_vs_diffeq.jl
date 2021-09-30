@@ -221,5 +221,44 @@ for (u_uc,t) in integrator
 end
 vtk_save(pvd);
 
+using Test                                                                  #hide
+function compute_divergence(dh, u, cellvalues_v)                            #hide
+    divv = 0.0                                                              #hide
+    @inbounds for (i,cell) in enumerate(CellIterator(dh))                   #hide
+        Ferrite.reinit!(cellvalues_v, cell)                                 #hide
+        for q_point in 1:getnquadpoints(cellvalues_v)                       #hide
+            dΩ = getdetJdV(cellvalues_v, q_point)                           #hide
+                                                                            #hide
+            all_celldofs = celldofs(cell)                                   #hide
+            v_celldofs = all_celldofs[dof_range(dh, :v)]                    #hide
+            v_cell = u[v_celldofs]                                          #hide
+                                                                            #hide
+            divv += function_divergence(cellvalues_v, q_point, v_cell) * dΩ #hide
+        end                                                                 #hide
+    end                                                                     #hide
+    return divv                                                             #hide
+end                                                                         #hide
+@testset "INS OrdinaryDiffEq" begin                                         #hide
+    u = integrator.integrator.u                                             #hide
+    Δdivv = abs(compute_divergence(dh, u, cellvalues_v))                    #hide
+    @test isapprox(Δdivv, 0.0, atol=1e-12)                                  #hide
+                                                                            #hide
+    Δv = 0.0                                                                #hide
+    for cell in CellIterator(dh)                                            #hide
+        Ferrite.reinit!(cellvalues_v, cell)                                 #hide
+        all_celldofs = celldofs(cell)                                       #hide
+        v_celldofs = all_celldofs[dof_range(dh, :v)]                        #hide
+        v_cell = u[v_celldofs]                                              #hide
+        coords = getcoordinates(cell)                                       #hide
+        for q_point in 1:getnquadpoints(cellvalues_v)                       #hide
+            dΩ = getdetJdV(cellvalues_v, q_point)                           #hide
+            coords_qp = spatial_coordinate(cellvalues_v, q_point, coords)   #hide
+            v = function_value(cellvalues_v, q_point, v_cell)               #hide
+            Δv += norm(v - parabolic_inflow_profile(coords_qp, T))^2*dΩ     #hide
+        end                                                                 #hide
+    end                                                                     #hide
+    @test isapprox(sqrt(Δv), 0.0, atol=1e-3)                                #hide
+end;                                                                        #hide
+
 # This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl
 
