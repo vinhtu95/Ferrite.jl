@@ -20,7 +20,7 @@
 #   M(t) \mathrm{d}_t u = f(u,t)
 # ```
 # where $M$ is a possibly time-dependent and not necessarily invertible mass matrix,
-# $u$ the vector of unknowns and $f$ the right hand side. For us $f$ can be interpreted as
+# $u$ the vector of unknowns and $f$ the right-hand-side (RHS). For us $f$ can be interpreted as
 # the spatial discretization of all linear and nonlinear operators depending on $u$ and $t$,
 # but not on the time derivative of $u$.
 #
@@ -57,8 +57,8 @@
 # ```
 # where $v_{in}(t) = \text{clamp}(t, 0.0, 1.0)$. With a dynamic viscosity of $\nu = 0.001$
 # this is enough to induce turbulence behind the cylinder which leads to vortex shedding. The top and bottom of our
-# channel have no-slip conditions, i.e. $v = [0,0]^T$, while the right boundary has the do-nothing boundary condtion
-# $\nu \partial_n v - p n = 0$ to model outflow. With these boundary conditions we can choose the zero solution as a
+# channel have no-slip conditions, i.e. $v = [0,0]^{\textrm{T}}$, while the right boundary has the do-nothing boundary condtion
+# $\nu \partial_{\textrm{n}} v - p n = 0$ to model outflow. With these boundary conditions we can choose the zero solution as a
 # feasible initial condition.
 #
 # ### Derivation of Semi-Discrete Weak Form
@@ -88,7 +88,7 @@
 #  \end{bmatrix}
 #  =
 #  \underbrace{\begin{bmatrix}
-#       A & B^T \\
+#       A & B^{\textrm{T}} \\
 #       B & 0
 #  \end{bmatrix}}_{:=K}
 #  \begin{bmatrix}
@@ -248,7 +248,7 @@ end;
 # matrix has the following block form
 # ```math
 #   K = \begin{bmatrix}
-#       A & B^T \\
+#       A & B^{\textrm{T}} \\
 #       B & 0
 #   \end{bmatrix}
 # ```
@@ -283,7 +283,7 @@ function assemble_stokes_matrix(cellvalues_v::CellVectorValues{dim}, cellvalues_
                     Kₑ[BlockIndex((v▄, v▄), (i, j))] -= ν * ∇φᵢ ⊡ ∇φⱼ * dΩ
                 end
             end
-            # Assemble local pressure and incompressibility blocks of $B^T$ and $B$.
+            # Assemble local pressure and incompressibility blocks of $B^{\textrm{T}}$ and $B$.
             #+
             for j in 1:n_basefuncs_p
                 ψ = shape_value(cellvalues_p, q_point, j)
@@ -330,23 +330,23 @@ apply!(u₀, ch);
 jac_sparsity = sparse(K);
 
 # To apply the nonlinear portion of the Navier-Stokes problem we simply hand
-# over the dof handler and cell values to the right hand side as a parameter.
+# over the dof handler and cell values to the right-hand-side (RHS) as a parameter.
 # Further the pre-assembled linear part (which is time independent) is
 # passed to save some runtime. To apply the time-dependent Dirichlet BCs, we
 # also hand over the constraint handler.
 # The basic idea to apply the Dirichlet BCs consistently is that we copy the
 # current solution `u`, apply the Dirichlet BCs on the copy, evaluate the
-# discretized right hand side of the Navier-Stokes equations with this vector
-# and finally set the rhs to zero on every constraint. This way we obtain a
+# discretized RHS of the Navier-Stokes equations with this vector
+# and finally set the RHS to zero on every constraint. This way we obtain a
 # correct solution for all dofs which are not Dirichlet constrained. These
 # dofs are then corrected in a post-processing step, when evaluating the
 # solution vector at specific time points.
 # It should be finally noted that this **trick does not work** out of the box
 # **for constraining algebraic portion** of the DAE, i.e. if we would like to
-# put a Dirichlet BC on pressure dofs. As a workaround we have to set $f_i = 1$
-# instead of $f_i = 0$, because otherwise the equation system gets singular.
+# put a Dirichlet BC on pressure dofs. As a workaround we have to set $f_{\textrm{i}} = 1$
+# instead of $f_{\textrm{i}} = 0$, because otherwise the equation system gets singular.
 # This is obvious when we remember that our mass matrix is zero for these
-# dofs, such that we obtain the equation $0 \cdot \mathrm{d}_t p_i = 1 \cdot p_i$, which
+# dofs, such that we obtain the equation $0 \cdot \mathrm{d}_t p_{\textrm{i}} = 1 \cdot p_{\textrm{i}}$, which
 # now has a unique solution.
 struct RHSparams
     K::SparseMatrixCSC
@@ -394,7 +394,7 @@ function navierstokes!(du,u_uc,p,t)
                 # Note that in Tensors.jl the definition $\textrm{grad} v = \nabla v$ holds.
                 # With this information it can be quickly shown in index notation that
                 # ```math
-                # [(v \cdot \nabla) v]_i = v_j (\partial_j v_i) = [v (\nabla v)^T]_i
+                # [(v \cdot \nabla) v]_{\textrm{i}} = v_{\textrm{j}} (\partial_{\textrm{j}} v_{\textrm{i}}) = [v (\nabla v)^{\textrm{T}}]_{\textrm{i}}
                 # ```
                 # where we should pay attentation to the transpose of the gradient.
                 #+
@@ -450,7 +450,7 @@ for (u_uc,t) in integrator
 end
 vtk_save(pvd);
 
-# Test the result for full proper development of the flow                   #hide
+# Test the result for full proper development of the flow                   #src
 using Test                                                                  #hide
 function compute_divergence(dh, u, cellvalues_v)                            #hide
     divv = 0.0                                                              #hide
