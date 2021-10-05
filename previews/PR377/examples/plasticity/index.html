@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>von Mises plasticity · Ferrite.jl</title><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.11.1/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit">Ferrite.jl</span></div><form class="docs-search" action="../../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><a class="tocitem" href="../../manual/fe_intro/">Introduction to FEM</a></li><li><span class="tocitem">Manual</span><ul><li><a class="tocitem" href="../../manual/degrees_of_freedom/">Degrees of Freedom</a></li><li><a class="tocitem" href="../../manual/assembly/">Assembly</a></li><li><a class="tocitem" href="../../manual/boundary_conditions/">Boundary Conditions</a></li><li><a class="tocitem" href="../../manual/grid/">Grid</a></li><li><a class="tocitem" href="../../manual/export/">Export</a></li></ul></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="../heat_equation/">Heat Equation</a></li><li><a class="tocitem" href="../l2_projection/">L2-projection</a></li><li><a class="tocitem" href="../point_evaluation/">Point Evaluation</a></li><li><a class="tocitem" href="../helmholtz/">Helmholtz equation</a></li><li><a class="tocitem" href="../incompressible_elasticity/">Incompressible Elasticity</a></li><li><a class="tocitem" href="../hyperelasticity/">Hyperelasticity</a></li><li><a class="tocitem" href="../threaded_assembly/">Threaded Assembly</a></li><li class="is-active"><a class="tocitem" href>von Mises plasticity</a><ul class="internal"><li><a class="tocitem" href="#Introduction"><span>Introduction</span></a></li><li><a class="tocitem" href="#Material-modeling"><span>Material modeling</span></a></li><li><a class="tocitem" href="#Constitutive-driver"><span>Constitutive driver</span></a></li><li><a class="tocitem" href="#FE-problem"><span>FE-problem</span></a></li><li><a class="tocitem" href="#plasticity-raw-code"><span>Raw source</span></a></li></ul></li><li><a class="tocitem" href="../transient_heat_equation/">Time Dependent Problems</a></li><li><a class="tocitem" href="../landau/">Ginzburg-Landau model energy minimization</a></li><li><a class="tocitem" href="../linear_shell/">Linear shell</a></li><li><a class="tocitem" href="../quasi_incompressible_hyperelasticity/">Nearly Incompressible Hyperelasticity</a></li></ul></li><li><span class="tocitem">API Reference</span><ul><li><a class="tocitem" href="../../reference/quadrature/">Quadrature</a></li><li><a class="tocitem" href="../../reference/interpolations/">Interpolation</a></li><li><a class="tocitem" href="../../reference/fevalues/">FEValues</a></li><li><a class="tocitem" href="../../reference/dofhandler/">DofHandler</a></li><li><a class="tocitem" href="../../reference/assembly/">Assembly</a></li><li><a class="tocitem" href="../../reference/boundary_conditions/">Boundary Conditions</a></li><li><a class="tocitem" href="../../reference/grid/">Grid</a></li><li><a class="tocitem" href="../../reference/export/">Export</a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>von Mises plasticity</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>von Mises plasticity</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/Ferrite-FEM/Ferrite.jl/blob/master/docs/src/literate/plasticity.jl" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="von-Mises-plasticity"><a class="docs-heading-anchor" href="#von-Mises-plasticity">von Mises plasticity</a><a id="von-Mises-plasticity-1"></a><a class="docs-heading-anchor-permalink" href="#von-Mises-plasticity" title="Permalink"></a></h1><p><img src="../plasticity.png" alt="Shows the von Mises stress distribution in a cantilever beam."/> <em>Figure 1.</em> A coarse mesh solution of a cantilever beam subjected to a load causing plastic deformations. The initial yield limit is 200 MPa but due to hardening it increases up to approximately 240 MPa.</p><h2 id="Introduction"><a class="docs-heading-anchor" href="#Introduction">Introduction</a><a id="Introduction-1"></a><a class="docs-heading-anchor-permalink" href="#Introduction" title="Permalink"></a></h2><p>This example illustrates the use of a nonlinear material model in Ferrite. The particular model is von Mises plasticity (also know as J₂-plasticity) with isotropic hardening. The model is fully 3D, meaning that no assumptions like <em>plane stress</em> or <em>plane strain</em> are introduced.</p><p>Also note that the theory of the model is not described here, instead one is referred to standard textbooks on material modeling.</p><p>To illustrate the use of the plasticity model, we setup and solve a FE-problem consisting of a cantilever beam loaded at its free end. But first, we shortly describe the parts of the implementation deadling with the material modeling.</p><div class="admonition is-success"><header class="admonition-header">Tip</header><div class="admonition-body"><p>This example is also available as a Jupyter notebook: <a href="https://nbviewer.jupyter.org/github/Ferrite-FEM/Ferrite.jl/blob/gh-pages/previews/PR377/examples/plasticity.ipynb"><code>plasticity.ipynb</code></a></p></div></div><h2 id="Material-modeling"><a class="docs-heading-anchor" href="#Material-modeling">Material modeling</a><a id="Material-modeling-1"></a><a class="docs-heading-anchor-permalink" href="#Material-modeling" title="Permalink"></a></h2><p>This section describes the <code>struct</code>s and methods used to implement the material model</p><h3 id="Material-parameters-and-state-variables"><a class="docs-heading-anchor" href="#Material-parameters-and-state-variables">Material parameters and state variables</a><a id="Material-parameters-and-state-variables-1"></a><a class="docs-heading-anchor-permalink" href="#Material-parameters-and-state-variables" title="Permalink"></a></h3><p>Start by loading some necessary packages</p><pre><code class="language-julia">using Ferrite, Tensors, SparseArrays, LinearAlgebra, Printf</code></pre><p>We define a J₂-plasticity-material, containing material parameters and the elastic stiffness Dᵉ (since it is constant)</p><pre><code class="language-julia">struct J2Plasticity{T, S &lt;: SymmetricTensor{4, 3, T}}
+    G::T  # Shear modulus
+    K::T  # Bulk modulus
+    σ₀::T # Initial yield limit
+    H::T  # Hardening modulus
+    Dᵉ::S # Elastic stiffness tensor
+end;</code></pre><p>Next, we define a constructor for the material instance.</p><pre><code class="language-julia">function J2Plasticity(E, ν, σ₀, H)
+    δ(i,j) = i == j ? 1.0 : 0.0 # helper function
+    G = E / 2(1 + ν)
+    K = E / 3(1 - 2ν)
+
+    Isymdev(i,j,k,l) = 0.5*(δ(i,k)*δ(j,l) + δ(i,l)*δ(j,k)) - 1.0/3.0*δ(i,j)*δ(k,l)
+    temp(i,j,k,l) = 2.0G *( 0.5*(δ(i,k)*δ(j,l) + δ(i,l)*δ(j,k)) + ν/(1.0-2.0ν)*δ(i,j)*δ(k,l))
+    Dᵉ = SymmetricTensor{4, 3}(temp)
+    return J2Plasticity(G, K, σ₀, H, Dᵉ)
+end;</code></pre><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><p>Above, we defined a constructor <code>J2Plasticity(E, ν, σ₀, H)</code> in terms of the more common material parameters <span>$E$</span> and <span>$ν$</span> - simply as a convenience for the user.</p></div></div><p>Define a <code>struct</code> to store the material state for a Gauss point.</p><pre><code class="language-julia">struct MaterialState{T, S &lt;: SecondOrderTensor{3, T}}
+    # Store &quot;converged&quot; values
+    ϵᵖ::S # plastic strain
+    σ::S # stress
+    k::T # hardening variable
+end</code></pre><p>Constructor for initializing a material state. Every quantity is set to zero.</p><pre><code class="language-julia">function MaterialState()
+    return MaterialState(
+                zero(SymmetricTensor{2, 3}),
+                zero(SymmetricTensor{2, 3}),
+                0.0)
+end</code></pre><pre class="documenter-example-output">Main.ex-plasticity.MaterialState</pre><p>For later use, during the post-processing step, we define a function to compute the von Mises effective stress.</p><pre><code class="language-julia">function vonMises(σ)
+    s = dev(σ)
+    return sqrt(3.0/2.0 * s ⊡ s)
+end;</code></pre><h2 id="Constitutive-driver"><a class="docs-heading-anchor" href="#Constitutive-driver">Constitutive driver</a><a id="Constitutive-driver-1"></a><a class="docs-heading-anchor-permalink" href="#Constitutive-driver" title="Permalink"></a></h2><p>This is the actual method which computes the stress and material tangent stiffness in a given integration point. Input is the current strain and the material state from the previous timestep.</p><pre><code class="language-julia">function compute_stress_tangent(ϵ::SymmetricTensor{2, 3}, material::J2Plasticity, state::MaterialState)
+    # unpack some material parameters
+    G = material.G
+    H = material.H
+
+    # We use (•)ᵗ to denote *trial*-values
+    σᵗ = material.Dᵉ ⊡ (ϵ - state.ϵᵖ) # trial-stress
+    sᵗ = dev(σᵗ)         # deviatoric part of trial-stress
+    J₂ = 0.5 * sᵗ ⊡ sᵗ   # second invariant of sᵗ
+    σᵗₑ = sqrt(3.0*J₂)   # effective trial-stress (von Mises stress)
+    σʸ = material.σ₀ + H * state.k # Previous yield limit
+
+    φᵗ  = σᵗₑ - σʸ # Trial-value of the yield surface
+
+    if φᵗ &lt; 0.0 # elastic loading
+        return σᵗ, material.Dᵉ, MaterialState(state.ϵᵖ, σᵗ, state.k)
+    else # plastic loading
+        h = H + 3G
+        μ =  φᵗ / h   # plastic multiplier
+
+        c1 = 1 - 3G * μ / σᵗₑ
+        s = c1 * sᵗ           # updated deviatoric stress
+        σ = s + vol(σᵗ)       # updated stress
+
+        # Compute algorithmic tangent stiffness ``D = \frac{\Delta \sigma }{\Delta \epsilon}``
+        κ = H * (state.k + μ) # drag stress
+        σₑ = material.σ₀ + κ  # updated yield surface
+
+        δ(i,j) = i == j ? 1.0 : 0.0
+        Isymdev(i,j,k,l)  = 0.5*(δ(i,k)*δ(j,l) + δ(i,l)*δ(j,k)) - 1.0/3.0*δ(i,j)*δ(k,l)
+        Q(i,j,k,l) = Isymdev(i,j,k,l) - 3.0 / (2.0*σₑ^2) * s[i,j]*s[k,l]
+        b = (3G*μ/σₑ) / (1.0 + 3G*μ/σₑ)
+
+        Dtemp(i,j,k,l) = -2G*b * Q(i,j,k,l) - 9G^2 / (h*σₑ^2) * s[i,j]*s[k,l]
+        D = material.Dᵉ + SymmetricTensor{4, 3}(Dtemp)
+
+        # Return new state
+        Δϵᵖ = 3/2 * μ / σₑ * s # plastic strain
+        ϵᵖ = state.ϵᵖ + Δϵᵖ    # plastic strain
+        k = state.k + μ        # hardening variable
+        return σ, D, MaterialState(ϵᵖ, σ, k)
+    end
+end</code></pre><pre class="documenter-example-output">compute_stress_tangent (generic function with 1 method)</pre><h2 id="FE-problem"><a class="docs-heading-anchor" href="#FE-problem">FE-problem</a><a id="FE-problem-1"></a><a class="docs-heading-anchor-permalink" href="#FE-problem" title="Permalink"></a></h2><p>What follows are methods for assembling and and solving the FE-problem.</p><pre><code class="language-julia">function create_values(interpolation)
+    # setup quadrature rules
+    qr      = QuadratureRule{3,RefTetrahedron}(2)
+    face_qr = QuadratureRule{2,RefTetrahedron}(3)
+
+    # create geometric interpolation (use the same as for u)
+    interpolation_geom = Lagrange{3,RefTetrahedron,1}()
+
+    # cell and facevalues for u
+    cellvalues_u = CellVectorValues(qr, interpolation, interpolation_geom)
+    facevalues_u = FaceVectorValues(face_qr, interpolation, interpolation_geom)
+
+    return cellvalues_u, facevalues_u
+end;</code></pre><h3 id="Add-degrees-of-freedom"><a class="docs-heading-anchor" href="#Add-degrees-of-freedom">Add degrees of freedom</a><a id="Add-degrees-of-freedom-1"></a><a class="docs-heading-anchor-permalink" href="#Add-degrees-of-freedom" title="Permalink"></a></h3><pre><code class="language-julia">function create_dofhandler(grid, interpolation)
+    dh = DofHandler(grid)
+    dim = 3
+    push!(dh, :u, dim, interpolation) # add a displacement field with 3 components
+    close!(dh)
+    return dh
+end</code></pre><pre class="documenter-example-output">create_dofhandler (generic function with 1 method)</pre><h3 id="Boundary-conditions"><a class="docs-heading-anchor" href="#Boundary-conditions">Boundary conditions</a><a id="Boundary-conditions-1"></a><a class="docs-heading-anchor-permalink" href="#Boundary-conditions" title="Permalink"></a></h3><pre><code class="language-julia">function create_bc(dh, grid)
+    dbcs = ConstraintHandler(dh)
+    # Clamped on the left side
+    dofs = [1, 2, 3]
+    dbc = Dirichlet(:u, getfaceset(grid, &quot;left&quot;), (x,t) -&gt; [0.0, 0.0, 0.0], dofs)
+    add!(dbcs, dbc)
+    close!(dbcs)
+    return dbcs
+end;</code></pre><h3 id="Assembling-of-element-contributions"><a class="docs-heading-anchor" href="#Assembling-of-element-contributions">Assembling of element contributions</a><a id="Assembling-of-element-contributions-1"></a><a class="docs-heading-anchor-permalink" href="#Assembling-of-element-contributions" title="Permalink"></a></h3><ul><li>Residual vector <code>r</code></li><li>Tangent stiffness <code>K</code></li></ul><pre><code class="language-julia">function doassemble(cellvalues::CellVectorValues{dim},
+                    facevalues::FaceVectorValues{dim}, K::SparseMatrixCSC, grid::Grid,
+                    dh::DofHandler, material::J2Plasticity, u, states, states_old, t) where {dim}
+    r = zeros(ndofs(dh))
+    assembler = start_assemble(K, r)
+    nu = getnbasefunctions(cellvalues)
+    re = zeros(nu)     # element residual vector
+    ke = zeros(nu, nu) # element tangent matrix
+
+    for (i, cell) in enumerate(CellIterator(dh))
+        fill!(ke, 0)
+        fill!(re, 0)
+        eldofs = celldofs(cell)
+        ue = u[eldofs]
+        state = @view states[:, i]
+        state_old = @view states_old[:, i]
+        assemble_cell!(ke, re, cell, cellvalues, facevalues, grid, material,
+                       ue, state, state_old, t)
+        assemble!(assembler, eldofs, re, ke)
+    end
+    return K, r
+end</code></pre><pre class="documenter-example-output">doassemble (generic function with 1 method)</pre><p>Compute element contribution to the residual and the tangent.</p><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><p>Due to symmetry, we only compute the lower half of the tangent and then symmetrize it.</p></div></div><pre><code class="language-julia">function assemble_cell!(Ke, re, cell, cellvalues, facevalues, grid, material,
+                        ue, state, state_old, t)
+    n_basefuncs = getnbasefunctions(cellvalues)
+    reinit!(cellvalues, cell)
+
+    for q_point in 1:getnquadpoints(cellvalues)
+        # For each integration point, compute stress and material stiffness
+        ϵ = function_symmetric_gradient(cellvalues, q_point, ue) # Total strain
+        σ, D, state[q_point] = compute_stress_tangent(ϵ, material, state_old[q_point])
+
+        dΩ = getdetJdV(cellvalues, q_point)
+        for i in 1:n_basefuncs
+            δϵ = shape_symmetric_gradient(cellvalues, q_point, i)
+            re[i] += (δϵ ⊡ σ) * dΩ # add internal force to residual
+            for j in 1:i # loop only over lower half
+                Δϵ = shape_symmetric_gradient(cellvalues, q_point, j)
+                Ke[i, j] += δϵ ⊡ D ⊡ Δϵ * dΩ
+            end
+        end
+    end
+    symmetrize_lower!(Ke)
+
+    # Add traction as a negative contribution to the element residual `re`:
+    for face in 1:nfaces(cell)
+        if onboundary(cell, face) &amp;&amp; (cellid(cell), face) ∈ getfaceset(grid, &quot;right&quot;)
+            reinit!(facevalues, cell, face)
+            for q_point in 1:getnquadpoints(facevalues)
+                dΓ = getdetJdV(facevalues, q_point)
+                for i in 1:n_basefuncs
+                    δu = shape_value(facevalues, q_point, i)
+                    re[i] -= (δu ⋅ t) * dΓ
+                end
+            end
+        end
+    end
+
+end</code></pre><pre class="documenter-example-output">assemble_cell! (generic function with 1 method)</pre><p>Helper function to symmetrize the material tangent</p><pre><code class="language-julia">function symmetrize_lower!(K)
+    for i in 1:size(K,1)
+        for j in i+1:size(K,1)
+            K[i,j] = K[j,i]
+        end
+    end
+end;</code></pre><p>Define a function which solves the FE-problem.</p><pre><code class="language-julia">function solve()
+    # Define material parameters
+    E = 200.0e9 # [Pa]
+    H = E/20   # [Pa]
+    ν = 0.3     # [-]
+    σ₀ = 200e6  # [Pa]
+    material = J2Plasticity(E, ν, σ₀, H)
+
+    L = 10.0 # beam length [m]
+    w = 1.0  # beam width [m]
+    h = 1.0  # beam height[m]
+    n_timesteps = 10
+    u_max = zeros(n_timesteps)
+    traction_magnitude = 1.e7 * range(0.5, 1.0, length=n_timesteps)
+
+    # Create geometry, dofs and boundary conditions
+    n = 2
+    nels = (10n, n, 2n) # number of elements in each spatial direction
+    P1 = Vec((0.0, 0.0, 0.0))  # start point for geometry
+    P2 = Vec((L, w, h))        # end point for geometry
+    grid = generate_grid(Tetrahedron, nels, P1, P2)
+    interpolation = Lagrange{3, RefTetrahedron, 1}() # Linear tet with 3 unknowns/node
+
+    dh = create_dofhandler(grid, interpolation) # JuaFEM helper function
+    dbcs = create_bc(dh, grid) # create Dirichlet boundary-conditions
+
+    cellvalues, facevalues = create_values(interpolation)
+
+    # Pre-allocate solution vectors, etc.
+    n_dofs = ndofs(dh)  # total number of dofs
+    u  = zeros(n_dofs)  # solution vector
+    Δu = zeros(n_dofs)  # displacement correction
+    r = zeros(n_dofs)   # residual
+    K = create_sparsity_pattern(dh); # tangent stiffness matrix
+
+    # Create material states. One array for each cell, where each element is an array of material-
+    # states - one for each integration point
+    nqp = getnquadpoints(cellvalues)
+    states = [MaterialState() for _ in 1:nqp, _ in 1:getncells(grid)]
+    states_old = [MaterialState() for _ in 1:nqp, _ in 1:getncells(grid)]
+
+    # Newton-Raphson loop
+    NEWTON_TOL = 1 # 1 N
+    print(&quot;\n Starting Netwon iterations:\n&quot;)
+
+    for timestep in 1:n_timesteps
+        t = timestep # actual time (used for evaluating d-bndc)
+        traction = Vec((0.0, 0.0, traction_magnitude[timestep]))
+        newton_itr = -1
+        print(&quot;\n Time step @time = $timestep:\n&quot;)
+        update!(dbcs, t) # evaluates the D-bndc at time t
+        apply!(u, dbcs)  # set the prescribed values in the solution vector
+
+        while true; newton_itr += 1
+
+            if newton_itr &gt; 8
+                error(&quot;Reached maximum Newton iterations, aborting&quot;)
+                break
+            end
+            K, r = doassemble(cellvalues, facevalues, K, grid, dh, material, u,
+                             states, states_old, traction);
+            norm_r = norm(r[Ferrite.free_dofs(dbcs)])
+
+            print(&quot;Iteration: $newton_itr \tresidual: $(@sprintf(&quot;%.8f&quot;, norm_r))\n&quot;)
+            if norm_r &lt; NEWTON_TOL
+                break
+            end
+
+            apply_zero!(K, r, dbcs)
+            Δu = Symmetric(K) \ r
+            u -= Δu
+        end
+
+        # Update all the material states after we have reached equilibrium
+        states .= states_old
+
+        u_max[timestep] = max(abs.(u)...) # maximum displacement in current timestep
+    end
+
+    # ## Postprocessing
+    # Only a vtu-file corrsponding to the last time-step is exported.
+    #
+    # The following is a quick (and dirty) way of extracting average cell data for export.
+    mises_values = zeros(getncells(grid))
+    κ_values = zeros(getncells(grid))
+    for (el, cell_states) in enumerate(eachcol(states))
+        for state in cell_states
+            mises_values[el] += vonMises(state.σ)
+            κ_values[el] += state.k*material.H
+        end
+        mises_values[el] /= length(cell_states) # average von Mises stress
+        κ_values[el] /= length(cell_states)     # average drag stress
+    end
+    vtk_grid(&quot;plasticity&quot;, dh) do vtkfile
+        vtk_point_data(vtkfile, dh, u) # displacement field
+        vtk_cell_data(vtkfile, mises_values, &quot;von Mises [Pa]&quot;)
+        vtk_cell_data(vtkfile, κ_values, &quot;Drag stress [Pa]&quot;)
+    end
+
+    return u_max, traction_magnitude
+end</code></pre><pre class="documenter-example-output">solve (generic function with 1 method)</pre><p>Solve the FE-problem and for each time-step extract maximum displacement and the corresponding traction load. Also compute the limit-traction-load</p><pre><code class="language-julia">u_max, traction_magnitude = solve();</code></pre><pre class="documenter-example-output">
+ Starting Netwon iterations:
+
+ Time step @time = 1:
+Iteration: 0 	residual: 1435838.41167605
+Iteration: 1 	residual: 118655.22430254
+Iteration: 2 	residual: 59.50456058
+Iteration: 3 	residual: 0.00002568
+
+ Time step @time = 2:
+Iteration: 0 	residual: 159537.60129714
+Iteration: 1 	residual: 1694350.56418151
+Iteration: 2 	residual: 61820.80482082
+Iteration: 3 	residual: 14.33790315
+Iteration: 4 	residual: 0.00001342
+
+ Time step @time = 3:
+Iteration: 0 	residual: 159537.60129771
+Iteration: 1 	residual: 2412503.50980579
+Iteration: 2 	residual: 76496.00986522
+Iteration: 3 	residual: 31.96224926
+Iteration: 4 	residual: 0.00001507
+
+ Time step @time = 4:
+Iteration: 0 	residual: 159537.60129725
+Iteration: 1 	residual: 2031830.01307809
+Iteration: 2 	residual: 48344.17479748
+Iteration: 3 	residual: 5.09987796
+Iteration: 4 	residual: 0.00002016
+
+ Time step @time = 5:
+Iteration: 0 	residual: 159537.60129719
+Iteration: 1 	residual: 2889308.10415091
+Iteration: 2 	residual: 314560.96114483
+Iteration: 3 	residual: 447.46412022
+Iteration: 4 	residual: 0.00140751
+
+ Time step @time = 6:
+Iteration: 0 	residual: 159537.60129677
+Iteration: 1 	residual: 3895501.39402728
+Iteration: 2 	residual: 134530.38530745
+Iteration: 3 	residual: 887.33703540
+Iteration: 4 	residual: 0.00314775
+
+ Time step @time = 7:
+Iteration: 0 	residual: 159537.60129783
+Iteration: 1 	residual: 5135902.32616239
+Iteration: 2 	residual: 571330.33328885
+Iteration: 3 	residual: 1715.64410755
+Iteration: 4 	residual: 0.02030576
+
+ Time step @time = 8:
+Iteration: 0 	residual: 159537.60129774
+Iteration: 1 	residual: 4469808.51154812
+Iteration: 2 	residual: 223168.04272571
+Iteration: 3 	residual: 216.54715679
+Iteration: 4 	residual: 0.00033588
+
+ Time step @time = 9:
+Iteration: 0 	residual: 159537.60129662
+Iteration: 1 	residual: 4041233.59812741
+Iteration: 2 	residual: 118130.33153841
+Iteration: 3 	residual: 45.16545390
+Iteration: 4 	residual: 0.00004384
+
+ Time step @time = 10:
+Iteration: 0 	residual: 159537.60129755
+Iteration: 1 	residual: 4130436.32665028
+Iteration: 2 	residual: 125989.31522865
+Iteration: 3 	residual: 42.57938125
+Iteration: 4 	residual: 0.00004708</pre><p>Finally we plot the load-displacement curve.</p><pre><code class="language-julia">using Plots
+plot(
+    vcat(0.0, u_max),                # add the origin as a point
+    vcat(0.0, traction_magnitude),
+    linewidth=2,
+    title=&quot;Traction-displacement&quot;,
+    label=[&quot;&quot;],
+    markershape=:auto
+    )
+ylabel!(&quot;Traction [Pa]&quot;)
+xlabel!(&quot;Maximum deflection [m]&quot;)</code></pre><?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="600" height="400" viewBox="0 0 2400 1600">
+<defs>
+  <clipPath id="clip870">
+    <rect x="0" y="0" width="2400" height="1600"/>
+  </clipPath>
+</defs>
+<path clip-path="url(#clip870)" d="
+M0 1600 L2400 1600 L2400 0 L0 0  Z
+  " fill="#ffffff" fill-rule="evenodd" fill-opacity="1"/>
+<defs>
+  <clipPath id="clip871">
+    <rect x="480" y="0" width="1681" height="1600"/>
+  </clipPath>
+</defs>
+<path clip-path="url(#clip870)" d="
+M-nan -nan L-nan -nan L-nan -nan L-nan -nan  Z
+  " fill="#ffffff" fill-rule="evenodd" fill-opacity="1"/>
+<polyline clip-path="url(#clip871)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
+  527.547,1120 527.547,-560 
+  "/>
+<polyline clip-path="url(#clip871)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
+  838.244,1120 838.244,-560 
+  "/>
+<polyline clip-path="url(#clip871)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
+  1148.94,1120 1148.94,-560 
+  "/>
+<polyline clip-path="url(#clip871)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
+  1459.64,1120 1459.64,-560 
+  "/>
+<polyline clip-path="url(#clip871)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
+  1770.34,1120 1770.34,-560 
+  "/>
+<polyline clip-path="url(#clip871)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
+  2081.03,1120 2081.03,-560 
+  "/>
+<polyline clip-path="url(#clip870)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+  480,1120 2160,1120 
+  "/>
+<polyline clip-path="url(#clip870)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+  527.547,1120 527.547,1099.84 
+  "/>
+<polyline clip-path="url(#clip870)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+  838.244,1120 838.244,1099.84 
+  "/>
+<polyline clip-path="url(#clip870)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+  1148.94,1120 1148.94,1099.84 
+  "/>
+<polyline clip-path="url(#clip870)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+  1459.64,1120 1459.64,1099.84 
+  "/>
+<polyline clip-path="url(#clip870)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+  1770.34,1120 1770.34,1099.84 
+  "/>
+<polyline clip-path="url(#clip870)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+  2081.03,1120 2081.03,1099.84 
+  "/>
+<path clip-path="url(#clip870)" d="M 0 0 M495.557 1149.19 Q491.946 1149.19 490.117 1152.76 Q488.311 1156.3 488.311 1163.43 Q488.311 1170.53 490.117 1174.1 Q491.946 1177.64 495.557 1177.64 Q499.191 1177.64 500.996 1174.1 Q502.825 1170.53 502.825 1163.43 Q502.825 1156.3 500.996 1152.76 Q499.191 1149.19 495.557 1149.19 M495.557 1145.49 Q501.367 1145.49 504.422 1150.09 Q507.501 1154.68 507.501 1163.43 Q507.501 1172.15 504.422 1176.76 Q501.367 1181.34 495.557 1181.34 Q489.746 1181.34 486.668 1176.76 Q483.612 1172.15 483.612 1163.43 Q483.612 1154.68 486.668 1150.09 Q489.746 1145.49 495.557 1145.49 Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M512.57 1174.79 L517.455 1174.79 L517.455 1180.67 L512.57 1180.67 L512.57 1174.79 Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M532.524 1149.19 Q528.913 1149.19 527.084 1152.76 Q525.279 1156.3 525.279 1163.43 Q525.279 1170.53 527.084 1174.1 Q528.913 1177.64 532.524 1177.64 Q536.158 1177.64 537.964 1174.1 Q539.792 1170.53 539.792 1163.43 Q539.792 1156.3 537.964 1152.76 Q536.158 1149.19 532.524 1149.19 M532.524 1145.49 Q538.334 1145.49 541.39 1150.09 Q544.468 1154.68 544.468 1163.43 Q544.468 1172.15 541.39 1176.76 Q538.334 1181.34 532.524 1181.34 Q526.714 1181.34 523.635 1176.76 Q520.58 1172.15 520.58 1163.43 Q520.58 1154.68 523.635 1150.09 Q526.714 1145.49 532.524 1145.49 Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M559.538 1149.19 Q555.927 1149.19 554.098 1152.76 Q552.292 1156.3 552.292 1163.43 Q552.292 1170.53 554.098 1174.1 Q555.927 1177.64 559.538 1177.64 Q563.172 1177.64 564.978 1174.1 Q566.806 1170.53 566.806 1163.43 Q566.806 1156.3 564.978 1152.76 Q563.172 1149.19 559.538 1149.19 M559.538 1145.49 Q565.348 1145.49 568.403 1150.09 Q571.482 1154.68 571.482 1163.43 Q571.482 1172.15 568.403 1176.76 Q565.348 1181.34 559.538 1181.34 Q553.728 1181.34 550.649 1176.76 Q547.593 1172.15 547.593 1163.43 Q547.593 1154.68 550.649 1150.09 Q553.728 1145.49 559.538 1145.49 Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M806.751 1149.19 Q803.14 1149.19 801.312 1152.76 Q799.506 1156.3 799.506 1163.43 Q799.506 1170.53 801.312 1174.1 Q803.14 1177.64 806.751 1177.64 Q810.386 1177.64 812.191 1174.1 Q814.02 1170.53 814.02 1163.43 Q814.02 1156.3 812.191 1152.76 Q810.386 1149.19 806.751 1149.19 M806.751 1145.49 Q812.562 1145.49 815.617 1150.09 Q818.696 1154.68 818.696 1163.43 Q818.696 1172.15 815.617 1176.76 Q812.562 1181.34 806.751 1181.34 Q800.941 1181.34 797.863 1176.76 Q794.807 1172.15 794.807 1163.43 Q794.807 1154.68 797.863 1150.09 Q800.941 1145.49 806.751 1145.49 Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M823.765 1174.79 L828.65 1174.79 L828.65 1180.67 L823.765 1180.67 L823.765 1174.79 Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M843.719 1149.19 Q840.108 1149.19 838.279 1152.76 Q836.474 1156.3 836.474 1163.43 Q836.474 1170.53 838.279 1174.1 Q840.108 1177.64 843.719 1177.64 Q847.353 1177.64 849.159 1174.1 Q850.987 1170.53 850.987 1163.43 Q850.987 1156.3 849.159 1152.76 Q847.353 1149.19 843.719 1149.19 M843.719 1145.49 Q849.529 1145.49 852.585 1150.09 Q855.663 1154.68 855.663 1163.43 Q855.663 1172.15 852.585 1176.76 Q849.529 1181.34 843.719 1181.34 Q837.909 1181.34 834.83 1176.76 Q831.775 1172.15 831.775 1163.43 Q831.775 1154.68 834.83 1150.09 Q837.909 1145.49 843.719 1145.49 Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M860.779 1146.11 L879.135 1146.11 L879.135 1150.05 L865.061 1150.05 L865.061 1158.52 Q866.08 1158.17 867.098 1158.01 Q868.117 1157.82 869.135 1157.82 Q874.922 1157.82 878.302 1161 Q881.682 1164.17 881.682 1169.58 Q881.682 1175.16 878.209 1178.26 Q874.737 1181.34 868.418 1181.34 Q866.242 1181.34 863.973 1180.97 Q861.728 1180.6 859.321 1179.86 L859.321 1175.16 Q861.404 1176.3 863.626 1176.85 Q865.848 1177.41 868.325 1177.41 Q872.33 1177.41 874.668 1175.3 Q877.006 1173.2 877.006 1169.58 Q877.006 1165.97 874.668 1163.87 Q872.33 1161.76 868.325 1161.76 Q866.45 1161.76 864.575 1162.18 Q862.723 1162.59 860.779 1163.47 L860.779 1146.11 Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M1117.56 1149.19 Q1113.95 1149.19 1112.12 1152.76 Q1110.32 1156.3 1110.32 1163.43 Q1110.32 1170.53 1112.12 1174.1 Q1113.95 1177.64 1117.56 1177.64 Q1121.2 1177.64 1123 1174.1 Q1124.83 1170.53 1124.83 1163.43 Q1124.83 1156.3 1123 1152.76 Q1121.2 1149.19 1117.56 1149.19 M1117.56 1145.49 Q1123.37 1145.49 1126.43 1150.09 Q1129.51 1154.68 1129.51 1163.43 Q1129.51 1172.15 1126.43 1176.76 Q1123.37 1181.34 1117.56 1181.34 Q1111.75 1181.34 1108.68 1176.76 Q1105.62 1172.15 1105.62 1163.43 Q1105.62 1154.68 1108.68 1150.09 Q1111.75 1145.49 1117.56 1145.49 Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M1134.58 1174.79 L1139.46 1174.79 L1139.46 1180.67 L1134.58 1180.67 L1134.58 1174.79 Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M1145.34 1176.74 L1152.98 1176.74 L1152.98 1150.37 L1144.67 1152.04 L1144.67 1147.78 L1152.93 1146.11 L1157.61 1146.11 L1157.61 1176.74 L1165.25 1176.74 L1165.25 1180.67 L1145.34 1180.67 L1145.34 1176.74 Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M1180.32 1149.19 Q1176.71 1149.19 1174.88 1152.76 Q1173.07 1156.3 1173.07 1163.43 Q1173.07 1170.53 1174.88 1174.1 Q1176.71 1177.64 1180.32 1177.64 Q1183.95 1177.64 1185.76 1174.1 Q1187.59 1170.53 1187.59 1163.43 Q1187.59 1156.3 1185.76 1152.76 Q1183.95 1149.19 1180.32 1149.19 M1180.32 1145.49 Q1186.13 1145.49 1189.18 1150.09 Q1192.26 1154.68 1192.26 1163.43 Q1192.26 1172.15 1189.18 1176.76 Q1186.13 1181.34 1180.32 1181.34 Q1174.51 1181.34 1171.43 1176.76 Q1168.37 1172.15 1168.37 1163.43 Q1168.37 1154.68 1171.43 1150.09 Q1174.51 1145.49 1180.32 1145.49 Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M1428.76 1149.19 Q1425.15 1149.19 1423.32 1152.76 Q1421.51 1156.3 1421.51 1163.43 Q1421.51 1170.53 1423.32 1174.1 Q1425.15 1177.64 1428.76 1177.64 Q1432.39 1177.64 1434.2 1174.1 Q1436.03 1170.53 1436.03 1163.43 Q1436.03 1156.3 1434.2 1152.76 Q1432.39 1149.19 1428.76 1149.19 M1428.76 1145.49 Q1434.57 1145.49 1437.63 1150.09 Q1440.7 1154.68 1440.7 1163.43 Q1440.7 1172.15 1437.63 1176.76 Q1434.57 1181.34 1428.76 1181.34 Q1422.95 1181.34 1419.87 1176.76 Q1416.81 1172.15 1416.81 1163.43 Q1416.81 1154.68 1419.87 1150.09 Q1422.95 1145.49 1428.76 1145.49 Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M1445.77 1174.79 L1450.66 1174.79 L1450.66 1180.67 L1445.77 1180.67 L1445.77 1174.79 Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M1456.54 1176.74 L1464.18 1176.74 L1464.18 1150.37 L1455.87 1152.04 L1455.87 1147.78 L1464.13 1146.11 L1468.81 1146.11 L1468.81 1176.74 L1476.44 1176.74 L1476.44 1180.67 L1456.54 1180.67 L1456.54 1176.74 Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M1481.56 1146.11 L1499.92 1146.11 L1499.92 1150.05 L1485.84 1150.05 L1485.84 1158.52 Q1486.86 1158.17 1487.88 1158.01 Q1488.9 1157.82 1489.92 1157.82 Q1495.7 1157.82 1499.08 1161 Q1502.46 1164.17 1502.46 1169.58 Q1502.46 1175.16 1498.99 1178.26 Q1495.52 1181.34 1489.2 1181.34 Q1487.02 1181.34 1484.75 1180.97 Q1482.51 1180.6 1480.1 1179.86 L1480.1 1175.16 Q1482.18 1176.3 1484.41 1176.85 Q1486.63 1177.41 1489.11 1177.41 Q1493.11 1177.41 1495.45 1175.3 Q1497.79 1173.2 1497.79 1169.58 Q1497.79 1165.97 1495.45 1163.87 Q1493.11 1161.76 1489.11 1161.76 Q1487.23 1161.76 1485.36 1162.18 Q1483.5 1162.59 1481.56 1163.47 L1481.56 1146.11 Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M1739.14 1149.19 Q1735.53 1149.19 1733.7 1152.76 Q1731.9 1156.3 1731.9 1163.43 Q1731.9 1170.53 1733.7 1174.1 Q1735.53 1177.64 1739.14 1177.64 Q1742.78 1177.64 1744.58 1174.1 Q1746.41 1170.53 1746.41 1163.43 Q1746.41 1156.3 1744.58 1152.76 Q1742.78 1149.19 1739.14 1149.19 M1739.14 1145.49 Q1744.95 1145.49 1748.01 1150.09 Q1751.09 1154.68 1751.09 1163.43 Q1751.09 1172.15 1748.01 1176.76 Q1744.95 1181.34 1739.14 1181.34 Q1733.33 1181.34 1730.26 1176.76 Q1727.2 1172.15 1727.2 1163.43 Q1727.2 1154.68 1730.26 1150.09 Q1733.33 1145.49 1739.14 1145.49 Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M1756.16 1174.79 L1761.04 1174.79 L1761.04 1180.67 L1756.16 1180.67 L1756.16 1174.79 Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M1770.14 1176.74 L1786.46 1176.74 L1786.46 1180.67 L1764.51 1180.67 L1764.51 1176.74 Q1767.18 1173.98 1771.76 1169.35 Q1776.37 1164.7 1777.55 1163.36 Q1779.79 1160.83 1780.67 1159.1 Q1781.57 1157.34 1781.57 1155.65 Q1781.57 1152.89 1779.63 1151.16 Q1777.71 1149.42 1774.61 1149.42 Q1772.41 1149.42 1769.95 1150.19 Q1767.52 1150.95 1764.75 1152.5 L1764.75 1147.78 Q1767.57 1146.64 1770.02 1146.07 Q1772.48 1145.49 1774.51 1145.49 Q1779.88 1145.49 1783.08 1148.17 Q1786.27 1150.86 1786.27 1155.35 Q1786.27 1157.48 1785.46 1159.4 Q1784.68 1161.3 1782.57 1163.89 Q1781.99 1164.56 1778.89 1167.78 Q1775.79 1170.97 1770.14 1176.74 Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M1801.53 1149.19 Q1797.92 1149.19 1796.09 1152.76 Q1794.28 1156.3 1794.28 1163.43 Q1794.28 1170.53 1796.09 1174.1 Q1797.92 1177.64 1801.53 1177.64 Q1805.16 1177.64 1806.97 1174.1 Q1808.8 1170.53 1808.8 1163.43 Q1808.8 1156.3 1806.97 1152.76 Q1805.16 1149.19 1801.53 1149.19 M1801.53 1145.49 Q1807.34 1145.49 1810.39 1150.09 Q1813.47 1154.68 1813.47 1163.43 Q1813.47 1172.15 1810.39 1176.76 Q1807.34 1181.34 1801.53 1181.34 Q1795.72 1181.34 1792.64 1176.76 Q1789.58 1172.15 1789.58 1163.43 Q1789.58 1154.68 1792.64 1150.09 Q1795.72 1145.49 1801.53 1145.49 Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M2050.34 1149.19 Q2046.73 1149.19 2044.9 1152.76 Q2043.09 1156.3 2043.09 1163.43 Q2043.09 1170.53 2044.9 1174.1 Q2046.73 1177.64 2050.34 1177.64 Q2053.97 1177.64 2055.78 1174.1 Q2057.61 1170.53 2057.61 1163.43 Q2057.61 1156.3 2055.78 1152.76 Q2053.97 1149.19 2050.34 1149.19 M2050.34 1145.49 Q2056.15 1145.49 2059.2 1150.09 Q2062.28 1154.68 2062.28 1163.43 Q2062.28 1172.15 2059.2 1176.76 Q2056.15 1181.34 2050.34 1181.34 Q2044.53 1181.34 2041.45 1176.76 Q2038.39 1172.15 2038.39 1163.43 Q2038.39 1154.68 2041.45 1150.09 Q2044.53 1145.49 2050.34 1145.49 Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M2067.35 1174.79 L2072.24 1174.79 L2072.24 1180.67 L2067.35 1180.67 L2067.35 1174.79 Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M2081.33 1176.74 L2097.65 1176.74 L2097.65 1180.67 L2075.71 1180.67 L2075.71 1176.74 Q2078.37 1173.98 2082.95 1169.35 Q2087.56 1164.7 2088.74 1163.36 Q2090.99 1160.83 2091.87 1159.1 Q2092.77 1157.34 2092.77 1155.65 Q2092.77 1152.89 2090.82 1151.16 Q2088.9 1149.42 2085.8 1149.42 Q2083.6 1149.42 2081.15 1150.19 Q2078.72 1150.95 2075.94 1152.5 L2075.94 1147.78 Q2078.76 1146.64 2081.22 1146.07 Q2083.67 1145.49 2085.71 1145.49 Q2091.08 1145.49 2094.27 1148.17 Q2097.47 1150.86 2097.47 1155.35 Q2097.47 1157.48 2096.66 1159.4 Q2095.87 1161.3 2093.76 1163.89 Q2093.19 1164.56 2090.08 1167.78 Q2086.98 1170.97 2081.33 1176.74 Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M2102.77 1146.11 L2121.13 1146.11 L2121.13 1150.05 L2107.05 1150.05 L2107.05 1158.52 Q2108.07 1158.17 2109.09 1158.01 Q2110.11 1157.82 2111.13 1157.82 Q2116.91 1157.82 2120.29 1161 Q2123.67 1164.17 2123.67 1169.58 Q2123.67 1175.16 2120.2 1178.26 Q2116.73 1181.34 2110.41 1181.34 Q2108.23 1181.34 2105.96 1180.97 Q2103.72 1180.6 2101.31 1179.86 L2101.31 1175.16 Q2103.39 1176.3 2105.62 1176.85 Q2107.84 1177.41 2110.32 1177.41 Q2114.32 1177.41 2116.66 1175.3 Q2119 1173.2 2119 1169.58 Q2119 1165.97 2116.66 1163.87 Q2114.32 1161.76 2110.32 1161.76 Q2108.44 1161.76 2106.57 1162.18 Q2104.71 1162.59 2102.77 1163.47 L2102.77 1146.11 Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan L-nan -nan M-nan -nan L-nan -nan L-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan M-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan L-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan L-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan L-nan -nan L-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan M-nan -nan L-nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan L-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan L-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan M-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan L-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan M-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan L-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan L-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan M-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan L-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan M-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan M-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan L-nan -nan L-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan L-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan L-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><polyline clip-path="url(#clip871)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
+  480,1072.45 2160,1072.45 
+  "/>
+<polyline clip-path="url(#clip871)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
+  480,676.226 2160,676.226 
+  "/>
+<polyline clip-path="url(#clip871)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
+  480,280 2160,280 
+  "/>
+<polyline clip-path="url(#clip871)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
+  480,-116.226 2160,-116.226 
+  "/>
+<polyline clip-path="url(#clip871)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
+  480,-512.453 2160,-512.453 
+  "/>
+<polyline clip-path="url(#clip870)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+  480,1120 480,-560 
+  "/>
+<polyline clip-path="url(#clip870)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+  480,1072.45 500.16,1072.45 
+  "/>
+<polyline clip-path="url(#clip870)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+  480,676.226 500.16,676.226 
+  "/>
+<polyline clip-path="url(#clip870)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+  480,280 500.16,280 
+  "/>
+<polyline clip-path="url(#clip870)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+  480,-116.226 500.16,-116.226 
+  "/>
+<polyline clip-path="url(#clip870)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+  480,-512.453 500.16,-512.453 
+  "/>
+<path clip-path="url(#clip870)" d="M 0 0 M-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan M-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan M-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 Mnan nan Qnan nan nan nan Qnan nan nan nan Qnan nan nan nan Qnan nan nan nan Qnan nan nan nan Qnan nan nan nan Qnan nan nan nan Qnan nan nan nan Mnan nan Lnan nan Qnan nan nan nan Qnan nan nan nan Qnan nan nan nan Qnan nan nan nan Qnan nan nan nan Qnan nan nan nan Qnan nan nan nan Qnan nan nan nan Qnan nan nan nan Qnan nan nan nan Qnan nan nan nan Qnan nan nan nan Qnan nan nan nan Qnan nan nan nan Qnan nan nan nan Qnan nan nan nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M280.698 269.168 L299.054 269.168 L299.054 273.103 L284.98 273.103 L284.98 281.575 Q285.999 281.228 287.017 281.066 Q288.036 280.881 289.054 280.881 Q294.841 280.881 298.221 284.052 Q301.601 287.223 301.601 292.64 Q301.601 298.218 298.128 301.32 Q294.656 304.399 288.337 304.399 Q286.161 304.399 283.892 304.029 Q281.647 303.658 279.24 302.917 L279.24 298.218 Q281.323 299.353 283.545 299.908 Q285.767 300.464 288.244 300.464 Q292.249 300.464 294.587 298.357 Q296.925 296.251 296.925 292.64 Q296.925 289.029 294.587 286.922 Q292.249 284.816 288.244 284.816 Q286.369 284.816 284.494 285.232 Q282.642 285.649 280.698 286.529 L280.698 269.168 Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M306.67 297.848 L311.554 297.848 L311.554 303.728 L306.67 303.728 L306.67 297.848 Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M326.624 272.246 Q323.013 272.246 321.184 275.811 Q319.378 279.353 319.378 286.482 Q319.378 293.589 321.184 297.154 Q323.013 300.695 326.624 300.695 Q330.258 300.695 332.063 297.154 Q333.892 293.589 333.892 286.482 Q333.892 279.353 332.063 275.811 Q330.258 272.246 326.624 272.246 M326.624 268.543 Q332.434 268.543 335.489 273.149 Q338.568 277.732 338.568 286.482 Q338.568 295.209 335.489 299.816 Q332.434 304.399 326.624 304.399 Q320.813 304.399 317.735 299.816 Q314.679 295.209 314.679 286.482 Q314.679 277.732 317.735 273.149 Q320.813 268.543 326.624 268.543 Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M371.809 278.265 L361.23 288.89 L371.809 299.468 L369.054 302.269 L358.429 291.644 L347.804 302.269 L345.073 299.468 L355.628 288.89 L345.073 278.265 L347.804 275.464 L358.429 286.089 L369.054 275.464 L371.809 278.265 Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M377.688 299.792 L385.327 299.792 L385.327 273.427 L377.017 275.093 L377.017 270.834 L385.281 269.168 L389.957 269.168 L389.957 299.792 L397.595 299.792 L397.595 303.728 L377.688 303.728 L377.688 299.792 Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M412.665 272.246 Q409.054 272.246 407.225 275.811 Q405.419 279.353 405.419 286.482 Q405.419 293.589 407.225 297.154 Q409.054 300.695 412.665 300.695 Q416.299 300.695 418.105 297.154 Q419.933 293.589 419.933 286.482 Q419.933 279.353 418.105 275.811 Q416.299 272.246 412.665 272.246 M412.665 268.543 Q418.475 268.543 421.531 273.149 Q424.609 277.732 424.609 286.482 Q424.609 295.209 421.531 299.816 Q418.475 304.399 412.665 304.399 Q406.855 304.399 403.776 299.816 Q400.72 295.209 400.72 286.482 Q400.72 277.732 403.776 273.149 Q406.855 268.543 412.665 268.543 Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M434.634 260.763 Q432.076 260.763 430.571 262.512 Q429.085 264.261 429.085 267.308 Q429.085 270.336 430.571 272.104 Q432.076 273.853 434.634 273.853 Q437.192 273.853 438.677 272.104 Q440.182 270.336 440.182 267.308 Q440.182 264.261 438.677 262.512 Q437.192 260.763 434.634 260.763 M442.176 248.858 L442.176 252.318 Q440.746 251.641 439.279 251.284 Q437.831 250.927 436.402 250.927 Q432.64 250.927 430.646 253.466 Q428.672 256.005 428.39 261.139 Q429.499 259.503 431.173 258.638 Q432.847 257.754 434.859 257.754 Q439.091 257.754 441.536 260.331 Q444 262.888 444 267.308 Q444 271.634 441.442 274.248 Q438.884 276.863 434.634 276.863 Q429.763 276.863 427.186 273.139 Q424.609 269.396 424.609 262.305 Q424.609 255.647 427.769 251.698 Q430.929 247.729 436.251 247.729 Q437.681 247.729 439.129 248.012 Q440.596 248.294 442.176 248.858 Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M280.374 -127.059 L302.596 -127.059 L302.596 -125.068 L290.05 -92.4988 L285.165 -92.4988 L296.971 -123.124 L280.374 -123.124 L280.374 -127.059 Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M307.665 -98.3784 L312.55 -98.3784 L312.55 -92.4988 L307.665 -92.4988 L307.665 -98.3784 Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M317.665 -127.059 L336.022 -127.059 L336.022 -123.124 L321.948 -123.124 L321.948 -114.651 Q322.966 -114.999 323.985 -115.161 Q325.003 -115.346 326.022 -115.346 Q331.809 -115.346 335.188 -112.175 Q338.568 -109.003 338.568 -103.587 Q338.568 -98.008 335.096 -94.9062 Q331.624 -91.8275 325.304 -91.8275 Q323.128 -91.8275 320.86 -92.1979 Q318.614 -92.5683 316.207 -93.309 L316.207 -98.008 Q318.29 -96.8738 320.513 -96.3182 Q322.735 -95.7627 325.212 -95.7627 Q329.216 -95.7627 331.554 -97.8692 Q333.892 -99.9756 333.892 -103.587 Q333.892 -107.198 331.554 -109.304 Q329.216 -111.411 325.212 -111.411 Q323.337 -111.411 321.462 -110.994 Q319.61 -110.577 317.665 -109.698 L317.665 -127.059 Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M371.809 -117.962 L361.23 -107.337 L371.809 -96.7581 L369.054 -93.9571 L358.429 -104.582 L347.804 -93.9571 L345.073 -96.7581 L355.628 -107.337 L345.073 -117.962 L347.804 -120.763 L358.429 -110.138 L369.054 -120.763 L371.809 -117.962 Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M377.688 -96.434 L385.327 -96.434 L385.327 -122.8 L377.017 -121.133 L377.017 -125.392 L385.281 -127.059 L389.957 -127.059 L389.957 -96.434 L397.595 -96.434 L397.595 -92.4988 L377.688 -92.4988 L377.688 -96.434 Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M412.665 -123.98 Q409.054 -123.98 407.225 -120.415 Q405.419 -116.874 405.419 -109.744 Q405.419 -102.638 407.225 -99.0729 Q409.054 -95.5312 412.665 -95.5312 Q416.299 -95.5312 418.105 -99.0729 Q419.933 -102.638 419.933 -109.744 Q419.933 -116.874 418.105 -120.415 Q416.299 -123.98 412.665 -123.98 M412.665 -127.684 Q418.475 -127.684 421.531 -123.077 Q424.609 -118.494 424.609 -109.744 Q424.609 -101.017 421.531 -96.4108 Q418.475 -91.8275 412.665 -91.8275 Q406.855 -91.8275 403.776 -96.4108 Q400.72 -101.017 400.72 -109.744 Q400.72 -118.494 403.776 -123.077 Q406.855 -127.684 412.665 -127.684 Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M434.634 -135.463 Q432.076 -135.463 430.571 -133.714 Q429.085 -131.965 429.085 -128.918 Q429.085 -125.89 430.571 -124.122 Q432.076 -122.373 434.634 -122.373 Q437.192 -122.373 438.677 -124.122 Q440.182 -125.89 440.182 -128.918 Q440.182 -131.965 438.677 -133.714 Q437.192 -135.463 434.634 -135.463 M442.176 -147.369 L442.176 -143.908 Q440.746 -144.585 439.279 -144.942 Q437.831 -145.3 436.402 -145.3 Q432.64 -145.3 430.646 -142.761 Q428.672 -140.222 428.39 -135.087 Q429.499 -136.723 431.173 -137.589 Q432.847 -138.472 434.859 -138.472 Q439.091 -138.472 441.536 -135.896 Q444 -133.338 444 -128.918 Q444 -124.592 441.442 -121.978 Q438.884 -119.364 434.634 -119.364 Q429.763 -119.364 427.186 -123.088 Q424.609 -126.83 424.609 -133.921 Q424.609 -140.579 427.769 -144.529 Q430.929 -148.497 436.251 -148.497 Q437.681 -148.497 439.129 -148.215 Q440.596 -147.933 442.176 -147.369 Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M283.029 -492.66 L290.667 -492.66 L290.667 -519.026 L282.357 -517.359 L282.357 -521.619 L290.621 -523.285 L295.297 -523.285 L295.297 -492.66 L302.936 -492.66 L302.936 -488.725 L283.029 -488.725 L283.029 -492.66 Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M308.005 -494.605 L312.89 -494.605 L312.89 -488.725 L308.005 -488.725 L308.005 -494.605 Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M327.959 -520.207 Q324.348 -520.207 322.519 -516.642 Q320.714 -513.1 320.714 -505.971 Q320.714 -498.864 322.519 -495.299 Q324.348 -491.758 327.959 -491.758 Q331.593 -491.758 333.399 -495.299 Q335.227 -498.864 335.227 -505.971 Q335.227 -513.1 333.399 -516.642 Q331.593 -520.207 327.959 -520.207 M327.959 -523.91 Q333.769 -523.91 336.825 -519.304 Q339.903 -514.72 339.903 -505.971 Q339.903 -497.244 336.825 -492.637 Q333.769 -488.054 327.959 -488.054 Q322.149 -488.054 319.07 -492.637 Q316.015 -497.244 316.015 -505.971 Q316.015 -514.72 319.07 -519.304 Q322.149 -523.91 327.959 -523.91 Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M373.144 -514.188 L362.565 -503.563 L373.144 -492.984 L370.389 -490.184 L359.764 -500.808 L349.139 -490.184 L346.408 -492.984 L356.963 -503.563 L346.408 -514.188 L349.139 -516.989 L359.764 -506.364 L370.389 -516.989 L373.144 -514.188 Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M379.023 -492.66 L386.662 -492.66 L386.662 -519.026 L378.352 -517.359 L378.352 -521.619 L386.616 -523.285 L391.292 -523.285 L391.292 -492.66 L398.931 -492.66 L398.931 -488.725 L379.023 -488.725 L379.023 -492.66 Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M414 -520.207 Q410.389 -520.207 408.56 -516.642 Q406.755 -513.1 406.755 -505.971 Q406.755 -498.864 408.56 -495.299 Q410.389 -491.758 414 -491.758 Q417.634 -491.758 419.44 -495.299 Q421.269 -498.864 421.269 -505.971 Q421.269 -513.1 419.44 -516.642 Q417.634 -520.207 414 -520.207 M414 -523.91 Q419.81 -523.91 422.866 -519.304 Q425.945 -514.72 425.945 -505.971 Q425.945 -497.244 422.866 -492.637 Q419.81 -488.054 414 -488.054 Q408.19 -488.054 405.111 -492.637 Q402.056 -497.244 402.056 -505.971 Q402.056 -514.72 405.111 -519.304 Q408.19 -523.91 414 -523.91 Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M425.945 -544.216 L444 -544.216 L444 -542.598 L433.806 -516.136 L429.838 -516.136 L439.43 -541.018 L425.945 -541.018 L425.945 -544.216 Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan L-nan -nan M-nan -nan L-nan -nan L-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan L-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan M-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan M-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan L-nan -nan L-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan L-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan M-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan L-nan -nan M-nan -nan L-nan -nan L-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan L-nan -nan M-nan -nan L-nan -nan L-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan L-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan M-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan M-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan L-nan -nan L-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan M-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan M-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan M-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan L-nan -nan M-nan -nan L-nan -nan L-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan L-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan M-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan L-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan L-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan L-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan M-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan L-nan -nan L-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan L-nan -nan L-nan -nan Q-nan -nan -nan -nan Q-nan -nan -nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><polyline clip-path="url(#clip871)" style="stroke:#009af9; stroke-width:8; stroke-opacity:1; fill:none" points="
+  527.547,1072.45 951.153,280 1001.22,191.95 1061.18,103.899 1129.53,15.8491 1209.94,-72.2013 1315.51,-160.252 1464.49,-248.302 1652.41,-336.352 1869.49,-424.403 
+  2112.45,-512.453 
+  "/>
+<circle clip-path="url(#clip871)" cx="527.547" cy="1072.45" r="14" fill="#009af9" fill-rule="evenodd" fill-opacity="1" stroke="#000000" stroke-opacity="1" stroke-width="3.2"/>
+<circle clip-path="url(#clip871)" cx="951.153" cy="280" r="14" fill="#009af9" fill-rule="evenodd" fill-opacity="1" stroke="#000000" stroke-opacity="1" stroke-width="3.2"/>
+<circle clip-path="url(#clip871)" cx="1001.22" cy="191.95" r="14" fill="#009af9" fill-rule="evenodd" fill-opacity="1" stroke="#000000" stroke-opacity="1" stroke-width="3.2"/>
+<circle clip-path="url(#clip871)" cx="1061.18" cy="103.899" r="14" fill="#009af9" fill-rule="evenodd" fill-opacity="1" stroke="#000000" stroke-opacity="1" stroke-width="3.2"/>
+<circle clip-path="url(#clip871)" cx="1129.53" cy="15.8491" r="14" fill="#009af9" fill-rule="evenodd" fill-opacity="1" stroke="#000000" stroke-opacity="1" stroke-width="3.2"/>
+<circle clip-path="url(#clip871)" cx="1209.94" cy="-72.2013" r="14" fill="#009af9" fill-rule="evenodd" fill-opacity="1" stroke="#000000" stroke-opacity="1" stroke-width="3.2"/>
+<circle clip-path="url(#clip871)" cx="1315.51" cy="-160.252" r="14" fill="#009af9" fill-rule="evenodd" fill-opacity="1" stroke="#000000" stroke-opacity="1" stroke-width="3.2"/>
+<circle clip-path="url(#clip871)" cx="1464.49" cy="-248.302" r="14" fill="#009af9" fill-rule="evenodd" fill-opacity="1" stroke="#000000" stroke-opacity="1" stroke-width="3.2"/>
+<circle clip-path="url(#clip871)" cx="1652.41" cy="-336.352" r="14" fill="#009af9" fill-rule="evenodd" fill-opacity="1" stroke="#000000" stroke-opacity="1" stroke-width="3.2"/>
+<circle clip-path="url(#clip871)" cx="1869.49" cy="-424.403" r="14" fill="#009af9" fill-rule="evenodd" fill-opacity="1" stroke="#000000" stroke-opacity="1" stroke-width="3.2"/>
+<circle clip-path="url(#clip871)" cx="2112.45" cy="-512.453" r="14" fill="#009af9" fill-rule="evenodd" fill-opacity="1" stroke="#000000" stroke-opacity="1" stroke-width="3.2"/>
+<path clip-path="url(#clip870)" d="
+M-nan -nan L-nan -nan L-nan -nan L-nan -nan  Z
+  " fill="#ffffff" fill-rule="evenodd" fill-opacity="1"/>
+<polyline clip-path="url(#clip870)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+  -nan,-nan -nan,-nan -nan,-nan -nan,-nan -nan,-nan 
+  "/>
+<polyline clip-path="url(#clip870)" style="stroke:#009af9; stroke-width:4; stroke-opacity:1; fill:none" points="
+  -nan,-nan -nan,-nan 
+  "/>
+<path clip-path="url(#clip870)" d="M 0 0 M-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan M-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan M-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /><path clip-path="url(#clip870)" d="M 0 0 M-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan L-nan -nan Z" fill="#000000" fill-rule="evenodd" fill-opacity="1" /></svg>
+<p><em>Figure 2.</em> Load-displacement-curve for the beam, showing a clear decrease in stiffness as more material starts to yield.</p><h2 id="plasticity-raw-code"><a class="docs-heading-anchor" href="#plasticity-raw-code">Raw source</a><a id="plasticity-raw-code-1"></a><a class="docs-heading-anchor-permalink" href="#plasticity-raw-code" title="Permalink"></a></h2><p>Below follows a version of the program without any comments. The file is also available here: <a href="../plasticity.jl">plasticity.jl</a></p><pre><code class="language-julia">using Ferrite, Tensors, SparseArrays, LinearAlgebra, Printf
+
+struct J2Plasticity{T, S &lt;: SymmetricTensor{4, 3, T}}
+    G::T  # Shear modulus
+    K::T  # Bulk modulus
+    σ₀::T # Initial yield limit
+    H::T  # Hardening modulus
+    Dᵉ::S # Elastic stiffness tensor
+end;
+
+function J2Plasticity(E, ν, σ₀, H)
+    δ(i,j) = i == j ? 1.0 : 0.0 # helper function
+    G = E / 2(1 + ν)
+    K = E / 3(1 - 2ν)
+
+    Isymdev(i,j,k,l) = 0.5*(δ(i,k)*δ(j,l) + δ(i,l)*δ(j,k)) - 1.0/3.0*δ(i,j)*δ(k,l)
+    temp(i,j,k,l) = 2.0G *( 0.5*(δ(i,k)*δ(j,l) + δ(i,l)*δ(j,k)) + ν/(1.0-2.0ν)*δ(i,j)*δ(k,l))
+    Dᵉ = SymmetricTensor{4, 3}(temp)
+    return J2Plasticity(G, K, σ₀, H, Dᵉ)
+end;
+
+struct MaterialState{T, S &lt;: SecondOrderTensor{3, T}}
+    # Store &quot;converged&quot; values
+    ϵᵖ::S # plastic strain
+    σ::S # stress
+    k::T # hardening variable
+end
+
+function MaterialState()
+    return MaterialState(
+                zero(SymmetricTensor{2, 3}),
+                zero(SymmetricTensor{2, 3}),
+                0.0)
+end
+
+function vonMises(σ)
+    s = dev(σ)
+    return sqrt(3.0/2.0 * s ⊡ s)
+end;
+
+function compute_stress_tangent(ϵ::SymmetricTensor{2, 3}, material::J2Plasticity, state::MaterialState)
+    # unpack some material parameters
+    G = material.G
+    H = material.H
+
+    # We use (•)ᵗ to denote *trial*-values
+    σᵗ = material.Dᵉ ⊡ (ϵ - state.ϵᵖ) # trial-stress
+    sᵗ = dev(σᵗ)         # deviatoric part of trial-stress
+    J₂ = 0.5 * sᵗ ⊡ sᵗ   # second invariant of sᵗ
+    σᵗₑ = sqrt(3.0*J₂)   # effective trial-stress (von Mises stress)
+    σʸ = material.σ₀ + H * state.k # Previous yield limit
+
+    φᵗ  = σᵗₑ - σʸ # Trial-value of the yield surface
+
+    if φᵗ &lt; 0.0 # elastic loading
+        return σᵗ, material.Dᵉ, MaterialState(state.ϵᵖ, σᵗ, state.k)
+    else # plastic loading
+        h = H + 3G
+        μ =  φᵗ / h   # plastic multiplier
+
+        c1 = 1 - 3G * μ / σᵗₑ
+        s = c1 * sᵗ           # updated deviatoric stress
+        σ = s + vol(σᵗ)       # updated stress
+
+        # Compute algorithmic tangent stiffness ``D = \frac{\Delta \sigma }{\Delta \epsilon}``
+        κ = H * (state.k + μ) # drag stress
+        σₑ = material.σ₀ + κ  # updated yield surface
+
+        δ(i,j) = i == j ? 1.0 : 0.0
+        Isymdev(i,j,k,l)  = 0.5*(δ(i,k)*δ(j,l) + δ(i,l)*δ(j,k)) - 1.0/3.0*δ(i,j)*δ(k,l)
+        Q(i,j,k,l) = Isymdev(i,j,k,l) - 3.0 / (2.0*σₑ^2) * s[i,j]*s[k,l]
+        b = (3G*μ/σₑ) / (1.0 + 3G*μ/σₑ)
+
+        Dtemp(i,j,k,l) = -2G*b * Q(i,j,k,l) - 9G^2 / (h*σₑ^2) * s[i,j]*s[k,l]
+        D = material.Dᵉ + SymmetricTensor{4, 3}(Dtemp)
+
+        # Return new state
+        Δϵᵖ = 3/2 * μ / σₑ * s # plastic strain
+        ϵᵖ = state.ϵᵖ + Δϵᵖ    # plastic strain
+        k = state.k + μ        # hardening variable
+        return σ, D, MaterialState(ϵᵖ, σ, k)
+    end
+end
+
+function create_values(interpolation)
+    # setup quadrature rules
+    qr      = QuadratureRule{3,RefTetrahedron}(2)
+    face_qr = QuadratureRule{2,RefTetrahedron}(3)
+
+    # create geometric interpolation (use the same as for u)
+    interpolation_geom = Lagrange{3,RefTetrahedron,1}()
+
+    # cell and facevalues for u
+    cellvalues_u = CellVectorValues(qr, interpolation, interpolation_geom)
+    facevalues_u = FaceVectorValues(face_qr, interpolation, interpolation_geom)
+
+    return cellvalues_u, facevalues_u
+end;
+
+function create_dofhandler(grid, interpolation)
+    dh = DofHandler(grid)
+    dim = 3
+    push!(dh, :u, dim, interpolation) # add a displacement field with 3 components
+    close!(dh)
+    return dh
+end
+
+function create_bc(dh, grid)
+    dbcs = ConstraintHandler(dh)
+    # Clamped on the left side
+    dofs = [1, 2, 3]
+    dbc = Dirichlet(:u, getfaceset(grid, &quot;left&quot;), (x,t) -&gt; [0.0, 0.0, 0.0], dofs)
+    add!(dbcs, dbc)
+    close!(dbcs)
+    return dbcs
+end;
+
+function doassemble(cellvalues::CellVectorValues{dim},
+                    facevalues::FaceVectorValues{dim}, K::SparseMatrixCSC, grid::Grid,
+                    dh::DofHandler, material::J2Plasticity, u, states, states_old, t) where {dim}
+    r = zeros(ndofs(dh))
+    assembler = start_assemble(K, r)
+    nu = getnbasefunctions(cellvalues)
+    re = zeros(nu)     # element residual vector
+    ke = zeros(nu, nu) # element tangent matrix
+
+    for (i, cell) in enumerate(CellIterator(dh))
+        fill!(ke, 0)
+        fill!(re, 0)
+        eldofs = celldofs(cell)
+        ue = u[eldofs]
+        state = @view states[:, i]
+        state_old = @view states_old[:, i]
+        assemble_cell!(ke, re, cell, cellvalues, facevalues, grid, material,
+                       ue, state, state_old, t)
+        assemble!(assembler, eldofs, re, ke)
+    end
+    return K, r
+end
+
+function assemble_cell!(Ke, re, cell, cellvalues, facevalues, grid, material,
+                        ue, state, state_old, t)
+    n_basefuncs = getnbasefunctions(cellvalues)
+    reinit!(cellvalues, cell)
+
+    for q_point in 1:getnquadpoints(cellvalues)
+        # For each integration point, compute stress and material stiffness
+        ϵ = function_symmetric_gradient(cellvalues, q_point, ue) # Total strain
+        σ, D, state[q_point] = compute_stress_tangent(ϵ, material, state_old[q_point])
+
+        dΩ = getdetJdV(cellvalues, q_point)
+        for i in 1:n_basefuncs
+            δϵ = shape_symmetric_gradient(cellvalues, q_point, i)
+            re[i] += (δϵ ⊡ σ) * dΩ # add internal force to residual
+            for j in 1:i # loop only over lower half
+                Δϵ = shape_symmetric_gradient(cellvalues, q_point, j)
+                Ke[i, j] += δϵ ⊡ D ⊡ Δϵ * dΩ
+            end
+        end
+    end
+    symmetrize_lower!(Ke)
+
+    # Add traction as a negative contribution to the element residual `re`:
+    for face in 1:nfaces(cell)
+        if onboundary(cell, face) &amp;&amp; (cellid(cell), face) ∈ getfaceset(grid, &quot;right&quot;)
+            reinit!(facevalues, cell, face)
+            for q_point in 1:getnquadpoints(facevalues)
+                dΓ = getdetJdV(facevalues, q_point)
+                for i in 1:n_basefuncs
+                    δu = shape_value(facevalues, q_point, i)
+                    re[i] -= (δu ⋅ t) * dΓ
+                end
+            end
+        end
+    end
+
+end
+
+function symmetrize_lower!(K)
+    for i in 1:size(K,1)
+        for j in i+1:size(K,1)
+            K[i,j] = K[j,i]
+        end
+    end
+end;
+
+function solve()
+    # Define material parameters
+    E = 200.0e9 # [Pa]
+    H = E/20   # [Pa]
+    ν = 0.3     # [-]
+    σ₀ = 200e6  # [Pa]
+    material = J2Plasticity(E, ν, σ₀, H)
+
+    L = 10.0 # beam length [m]
+    w = 1.0  # beam width [m]
+    h = 1.0  # beam height[m]
+    n_timesteps = 10
+    u_max = zeros(n_timesteps)
+    traction_magnitude = 1.e7 * range(0.5, 1.0, length=n_timesteps)
+
+    # Create geometry, dofs and boundary conditions
+    n = 2
+    nels = (10n, n, 2n) # number of elements in each spatial direction
+    P1 = Vec((0.0, 0.0, 0.0))  # start point for geometry
+    P2 = Vec((L, w, h))        # end point for geometry
+    grid = generate_grid(Tetrahedron, nels, P1, P2)
+    interpolation = Lagrange{3, RefTetrahedron, 1}() # Linear tet with 3 unknowns/node
+
+    dh = create_dofhandler(grid, interpolation) # JuaFEM helper function
+    dbcs = create_bc(dh, grid) # create Dirichlet boundary-conditions
+
+    cellvalues, facevalues = create_values(interpolation)
+
+    # Pre-allocate solution vectors, etc.
+    n_dofs = ndofs(dh)  # total number of dofs
+    u  = zeros(n_dofs)  # solution vector
+    Δu = zeros(n_dofs)  # displacement correction
+    r = zeros(n_dofs)   # residual
+    K = create_sparsity_pattern(dh); # tangent stiffness matrix
+
+    # Create material states. One array for each cell, where each element is an array of material-
+    # states - one for each integration point
+    nqp = getnquadpoints(cellvalues)
+    states = [MaterialState() for _ in 1:nqp, _ in 1:getncells(grid)]
+    states_old = [MaterialState() for _ in 1:nqp, _ in 1:getncells(grid)]
+
+    # Newton-Raphson loop
+    NEWTON_TOL = 1 # 1 N
+    print(&quot;\n Starting Netwon iterations:\n&quot;)
+
+    for timestep in 1:n_timesteps
+        t = timestep # actual time (used for evaluating d-bndc)
+        traction = Vec((0.0, 0.0, traction_magnitude[timestep]))
+        newton_itr = -1
+        print(&quot;\n Time step @time = $timestep:\n&quot;)
+        update!(dbcs, t) # evaluates the D-bndc at time t
+        apply!(u, dbcs)  # set the prescribed values in the solution vector
+
+        while true; newton_itr += 1
+
+            if newton_itr &gt; 8
+                error(&quot;Reached maximum Newton iterations, aborting&quot;)
+                break
+            end
+            K, r = doassemble(cellvalues, facevalues, K, grid, dh, material, u,
+                             states, states_old, traction);
+            norm_r = norm(r[Ferrite.free_dofs(dbcs)])
+
+            print(&quot;Iteration: $newton_itr \tresidual: $(@sprintf(&quot;%.8f&quot;, norm_r))\n&quot;)
+            if norm_r &lt; NEWTON_TOL
+                break
+            end
+
+            apply_zero!(K, r, dbcs)
+            Δu = Symmetric(K) \ r
+            u -= Δu
+        end
+
+        # Update all the material states after we have reached equilibrium
+        states .= states_old
+
+        u_max[timestep] = max(abs.(u)...) # maximum displacement in current timestep
+    end
+
+    # ## Postprocessing
+    # Only a vtu-file corrsponding to the last time-step is exported.
+    #
+    # The following is a quick (and dirty) way of extracting average cell data for export.
+    mises_values = zeros(getncells(grid))
+    κ_values = zeros(getncells(grid))
+    for (el, cell_states) in enumerate(eachcol(states))
+        for state in cell_states
+            mises_values[el] += vonMises(state.σ)
+            κ_values[el] += state.k*material.H
+        end
+        mises_values[el] /= length(cell_states) # average von Mises stress
+        κ_values[el] /= length(cell_states)     # average drag stress
+    end
+    vtk_grid(&quot;plasticity&quot;, dh) do vtkfile
+        vtk_point_data(vtkfile, dh, u) # displacement field
+        vtk_cell_data(vtkfile, mises_values, &quot;von Mises [Pa]&quot;)
+        vtk_cell_data(vtkfile, κ_values, &quot;Drag stress [Pa]&quot;)
+    end
+
+    return u_max, traction_magnitude
+end
+
+u_max, traction_magnitude = solve();
+
+using Plots
+plot(
+    vcat(0.0, u_max),                # add the origin as a point
+    vcat(0.0, traction_magnitude),
+    linewidth=2,
+    title=&quot;Traction-displacement&quot;,
+    label=[&quot;&quot;],
+    markershape=:auto
+    )
+ylabel!(&quot;Traction [Pa]&quot;)
+xlabel!(&quot;Maximum deflection [m]&quot;)
+
+# This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../threaded_assembly/">« Threaded Assembly</a><a class="docs-footer-nextpage" href="../transient_heat_equation/">Time Dependent Problems »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Tuesday 5 October 2021 17:06">Tuesday 5 October 2021</span>. Using Julia version 1.6.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
