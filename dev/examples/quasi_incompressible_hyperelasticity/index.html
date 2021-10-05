@@ -250,7 +250,7 @@ vol_def = solve(quadratic, linear);</code></pre><pre class="documenter-example-o
   iter:  1[K[A
 [K[ASolving @ time 1.0 of 2.0; (thresh = 1e-08, value = 2.60479e-05)[K
   iter:  2[K[A
-[K[ASolving @ time 1.0 of 2.0; Time: 0:00:00 (4 iterations)[K
+[K[ASolving @ time 1.0 of 2.0; Time: 0:00:01 (4 iterations)[K
   iter:  3[K
 Solving @ time 1.5 of 2.0; (thresh = 1e-08, value = 0.135472)[K
   iter:  0[K[A
@@ -258,7 +258,7 @@ vol_def = solve(quadratic, linear);</code></pre><pre class="documenter-example-o
   iter:  1[K[A
 [K[ASolving @ time 1.5 of 2.0; (thresh = 1e-08, value = 1.30232e-05)[K
   iter:  2[K[A
-[K[ASolving @ time 1.5 of 2.0; Time: 0:00:00 (4 iterations)[K
+[K[ASolving @ time 1.5 of 2.0; Time: 0:00:01 (4 iterations)[K
   iter:  3[K
 Solving @ time 2.0 of 2.0; (thresh = 1e-08, value = 0.135247)[K
   iter:  0[K[A
@@ -266,7 +266,7 @@ vol_def = solve(quadratic, linear);</code></pre><pre class="documenter-example-o
   iter:  1[K[A
 [K[ASolving @ time 2.0 of 2.0; (thresh = 1e-08, value = 6.94365e-06)[K
   iter:  2[K[A
-[K[ASolving @ time 2.0 of 2.0; Time: 0:00:00 (4 iterations)[K
+[K[ASolving @ time 2.0 of 2.0; Time: 0:00:01 (4 iterations)[K
   iter:  3[K
 Deformed volume is 1.000199977169989</pre><p>We can also check that the deformed volume is indeed close to 1 (as should be for a nearly incompressible material)</p><h2 id="Plain-Program"><a class="docs-heading-anchor" href="#Plain-Program">Plain Program</a><a id="Plain-Program-1"></a><a class="docs-heading-anchor-permalink" href="#Plain-Program" title="Permalink"></a></h2><p>Below follows a version of the program without any comments. The file is also available here: <a href="../quasi_incompressible_hyperelasticity.jl"><code>quasi_incompressible_hyperelasticity.jl</code></a></p><pre><code class="language-julia">using Ferrite, Tensors, ProgressMeter
 using BlockArrays, SparseArrays, LinearAlgebra
@@ -525,4 +525,4 @@ quadratic = Lagrange{3, RefTetrahedron, 2}()
 linear = Lagrange{3, RefTetrahedron, 1}()
 vol_def = solve(quadratic, linear);
 
-# This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../linear_shell/">« Linear shell</a><a class="docs-footer-nextpage" href="../../reference/quadrature/">Quadrature »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Tuesday 5 October 2021 12:34">Tuesday 5 October 2021</span>. Using Julia version 1.6.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+# This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../linear_shell/">« Linear shell</a><a class="docs-footer-nextpage" href="../../reference/quadrature/">Quadrature »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Tuesday 5 October 2021 16:11">Tuesday 5 October 2021</span>. Using Julia version 1.6.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
