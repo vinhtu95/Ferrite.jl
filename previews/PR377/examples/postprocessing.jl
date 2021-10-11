@@ -27,25 +27,26 @@ q_gp = compute_heat_fluxes(cellvalues, dh, u);
 
 projector = L2Projector(ip, grid);
 
-q_nodes = project(projector, q_gp, qr);
+q_projected = project(projector, q_gp, qr; project_to_nodes=false); # TODO: this should be default.
 
 vtk_grid("heat_equation_flux", grid) do vtk
-    vtk_point_data(vtk, q_nodes, "q")
+    # TODO: This doesn't work (correctly) yet (https://github.com/Ferrite-FEM/Ferrite.jl/issues/278)
+    vtk_point_data(vtk, q_projected, "q")
 end;
 
 points = [Vec((x, 0.75)) for x in range(-1.0, 1.0, length=101)];
 
-ph = PointEvalHandler(dh, points);
+ph = PointEvalHandler(grid, points);
 
-q_points = Ferrite.get_point_values(ph, q_nodes);
+q_points = get_point_values(ph, projector, q_projected);
 
-u_points = Ferrite.get_point_values(ph, u, :u);
+u_points = Ferrite.get_point_values(ph, dh, u, :u);
 
 import Plots
 
-Plots.plot(getindex.(points,1), u_points, label="Temperature", xlabel="X-Coordinate", ylabel = "Temperature")
+Plots.plot(getindex.(points,1), u_points, xlabel="x (coordinate)", ylabel="u (temperature)", label=nothing)
 
-Plots.plot(getindex.(points,1), getindex.(q_points,1),label="Flux", legend=:topleft, xlabel = "X-Coordinate", ylabel = "Heat flux")
+Plots.plot(getindex.(points,1), getindex.(q_points,1), xlabel="x (coordinate)", ylabel="q_x (flux in x-direction)", label=nothing)
 
 # This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl
 
