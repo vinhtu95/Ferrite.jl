@@ -200,15 +200,15 @@ end</code></pre><pre class="documenter-example-output"><code class="nohighlight 
  ------------------------------------------------------------------------------
   Analysis with 6000 elements          Time                   Allocations
                                ----------------------   -----------------------
-       Tot / % measured:            797ms / 56.4%           80.8MiB / 15.1%
+       Tot / % measured:            783ms / 53.6%           80.8MiB / 15.1%
 
  Section               ncalls     time   %tot     avg     alloc   %tot      avg
  ------------------------------------------------------------------------------
- assemble                   6    190ms  42.2%  31.6ms   6.60MiB  54.2%  1.10MiB
-   element assemble     36.0k    104ms  23.2%  2.89μs     0.00B  0.00%    0.00B
- linear solve (Iter...      5    167ms  37.1%  33.4ms    473KiB  3.79%  94.6KiB
- linear solve (Kryl...      5   51.9ms  11.6%  10.4ms    670KiB  5.37%   134KiB
- export                     1   40.8ms  9.09%  40.8ms   4.47MiB  36.7%  4.47MiB
+ assemble                   6    178ms  42.4%  29.7ms   6.60MiB  54.2%  1.10MiB
+   element assemble     36.0k    112ms  26.6%  3.10μs     0.00B  0.00%    0.00B
+ linear solve (Iter...      5    156ms  37.1%  31.2ms    473KiB  3.79%  94.6KiB
+ linear solve (Kryl...      5   46.9ms  11.2%  9.37ms    670KiB  5.37%   134KiB
+ export                     1   39.2ms  9.34%  39.2ms   4.47MiB  36.7%  4.47MiB
  ------------------------------------------------------------------------------</code></pre><h2 id="Plain-Program"><a class="docs-heading-anchor" href="#Plain-Program">Plain Program</a><a id="Plain-Program-1"></a><a class="docs-heading-anchor-permalink" href="#Plain-Program" title="Permalink"></a></h2><p>Below follows a version of the program without any comments. The file is also available here: <a href="../hyperelasticity.jl">hyperelasticity.jl</a></p><pre><code class="language-julia hljs">using Ferrite, Tensors, TimerOutputs, ProgressMeter
 import KrylovMethods, IterativeSolvers
 
@@ -405,4 +405,4 @@ end
 
 u = solve();
 
-# This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../incompressible_elasticity/">« Incompressible Elasticity</a><a class="docs-footer-nextpage" href="../threaded_assembly/">Threaded Assembly »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.10 on <span class="colophon-date" title="Monday 7 February 2022 15:35">Monday 7 February 2022</span>. Using Julia version 1.7.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+# This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../incompressible_elasticity/">« Incompressible Elasticity</a><a class="docs-footer-nextpage" href="../threaded_assembly/">Threaded Assembly »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.10 on <span class="colophon-date" title="Monday 7 February 2022 16:57">Monday 7 February 2022</span>. Using Julia version 1.7.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
