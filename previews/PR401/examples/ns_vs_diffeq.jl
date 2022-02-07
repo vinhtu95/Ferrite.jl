@@ -166,12 +166,12 @@ function navierstokes!(du,u_uc,p,t)
 
     @unpack K,ch,dh,cellvalues_v = p
 
-    u = u_uc
+    u = copy(u_uc)
     update!(ch, t)
     apply!(u, ch)
 
     # Linear contribution (Stokes operator)
-    du .= K * u
+    mul!(du, K, u) # du .= K * u
 
     # nonlinear contribution
     n_basefuncs = getnbasefunctions(cellvalues_v)
@@ -210,7 +210,7 @@ integrator = TimeChoiceIterator(integrator, 0.0:Δt_save:T)
 for (u_uc,t) in integrator
 
     update!(ch, t)
-    u = u_uc
+    u = copy(u_uc)
     apply!(u, ch)
     #compress=false flag because otherwise each vtk file will be stored in memory
     vtk_grid("vortex-street-$t.vtu", dh; compress=false) do vtk
@@ -239,7 +239,8 @@ function compute_divergence(dh, u, cellvalues_v)                            #hid
     return divv                                                             #hide
 end                                                                         #hide
 @testset "INS OrdinaryDiffEq" begin                                         #hide
-    u = integrator.integrator.u                                             #hide
+    u = copy(integrator.integrator.u)                                       #hide
+    apply!(u, ch)                                                           #hide
     Δdivv = abs(compute_divergence(dh, u, cellvalues_v))                    #hide
     @test isapprox(Δdivv, 0.0, atol=1e-12)                                  #hide
                                                                             #hide
