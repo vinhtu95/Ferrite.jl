@@ -11,11 +11,7 @@ dh = DofHandler(grid)
 push!(dh, :u, 1)
 close!(dh);
 
-K = create_sparsity_pattern(dh);
-
-using UnicodePlots
-fill!(K.nzval, 1.0)
-spy(K; height = 15)
+K = create_sparsity_pattern(dh)
 
 ch = ConstraintHandler(dh);
 

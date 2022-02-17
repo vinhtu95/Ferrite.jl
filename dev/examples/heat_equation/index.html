@@ -4,28 +4,27 @@ ip = Lagrange{dim, RefCube, 1}()
 qr = QuadratureRule{dim, RefCube}(2)
 cellvalues = CellScalarValues(qr, ip);</code></pre><h3 id="Degrees-of-freedom"><a class="docs-heading-anchor" href="#Degrees-of-freedom">Degrees of freedom</a><a id="Degrees-of-freedom-1"></a><a class="docs-heading-anchor-permalink" href="#Degrees-of-freedom" title="Permalink"></a></h3><p>Next we need to define a <code>DofHandler</code>, which will take care of numbering and distribution of degrees of freedom for our approximated fields. We create the <code>DofHandler</code> and then add a single field called <code>u</code>. Lastly we <code>close!</code> the <code>DofHandler</code>, it is now that the dofs are distributed for all the elements.</p><pre><code class="language-julia hljs">dh = DofHandler(grid)
 push!(dh, :u, 1)
-close!(dh);</code></pre><p>Now that we have distributed all our dofs we can create our tangent matrix, using <code>create_sparsity_pattern</code>. This function returns a sparse matrix with the correct elements stored.</p><pre><code class="language-julia hljs">K = create_sparsity_pattern(dh);</code></pre><p>We can inspect the pattern using the <code>spy</code> function from <code>UnicodePlots.jl</code>. By default the stored values are set to <span>$0$</span>, so we first need to fill the stored values, e.g. <code>K.nzval</code> with something meaningful.</p><pre><code class="language-julia hljs">using UnicodePlots
-fill!(K.nzval, 1.0)
-spy(K; height = 15)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">       ⠀⠀⠀⠀⠀⠀⠀⠀Sparsity Pattern⠀⠀⠀⠀⠀⠀⠀⠀    
-       ┌──────────────────────────────┐    
-     1 │⠻⣦⡈⢧⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│ &gt; 0
-       │⠦⣌⡻⣮⣧⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│ &lt; 0
-       │⠀⠀⠉⠻⣿⣿⣦⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│    
-       │⠀⠀⠀⠀⠈⠻⣿⣿⣦⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│    
-       │⠀⠀⠀⠀⠀⠀⠈⠻⣿⣿⢦⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│    
-       │⠀⠀⠀⠀⠀⠀⠀⠀⠈⠳⣿⣿⣦⡄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│    
-       │⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠿⣿⣿⣦⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│    
-       │⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠻⣿⣿⣦⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│    
-       │⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠻⣿⣿⣦⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│    
-       │⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠻⣿⣿⢦⡀⠀⠀⠀⠀⠀⠀⠀⠀│    
-       │⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠳⣿⣿⣦⡄⠀⠀⠀⠀⠀⠀│    
-       │⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠿⣿⣿⣦⡀⠀⠀⠀⠀│    
-       │⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠻⣿⣿⣦⡀⠀⠀│    
-       │⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠻⣿⣿⣦⡀│    
-   441 │⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠻⣿⣿│    
-       └──────────────────────────────┘    
-       ⠀1⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀441⠀    
-       ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀3721 nonzeros⠀⠀⠀⠀⠀⠀⠀⠀⠀    </code></pre><h3 id="Boundary-conditions"><a class="docs-heading-anchor" href="#Boundary-conditions">Boundary conditions</a><a id="Boundary-conditions-1"></a><a class="docs-heading-anchor-permalink" href="#Boundary-conditions" title="Permalink"></a></h3><p>In Ferrite constraints like Dirichlet boundary conditions are handled by a <code>ConstraintHandler</code>.</p><pre><code class="language-julia hljs">ch = ConstraintHandler(dh);</code></pre><p>Next we need to add constraints to <code>ch</code>. For this problem we define homogeneous Dirichlet boundary conditions on the whole boundary, i.e. the <code>union</code> of all the face sets on the boundary.</p><pre><code class="language-julia hljs">∂Ω = union(getfaceset.((grid, ), [&quot;left&quot;, &quot;right&quot;, &quot;top&quot;, &quot;bottom&quot;])...);</code></pre><p>Now we are set up to define our constraint. We specify which field the condition is for, and our combined face set <code>∂Ω</code>. The last argument is a function which takes the spatial coordinate <span>$x$</span> and the current time <span>$t$</span> and returns the prescribed value. In this case it is trivial – no matter what <span>$x$</span> and <span>$t$</span> we return <span>$0$</span>. When we have specified our constraint we <code>add!</code> it to <code>ch</code>.</p><pre><code class="language-julia hljs">dbc = Dirichlet(:u, ∂Ω, (x, t) -&gt; 0)
+close!(dh);</code></pre><p>Now that we have distributed all our dofs we can create our tangent matrix, using <code>create_sparsity_pattern</code>. This function returns a sparse matrix with the correct elements stored.</p><pre><code class="language-julia hljs">K = create_sparsity_pattern(dh)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">441×441 SparseArrays.SparseMatrixCSC{Float64, Int64} with 3721 stored entries:
+⠻⣦⡀⠀⢧⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠈⠻⣦⠈⢧⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠉⠓⠦⣄⡻⣮⡳⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠙⢮⡻⣮⡳⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠙⢮⡻⣮⡳⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠙⢮⡻⢎⡳⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠙⢮⡻⣮⡳⣤⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠙⣮⡻⣮⡳⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠙⢮⡻⣮⡳⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠙⢮⡻⣮⡳⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠙⢮⡻⣮⡳⣆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠹⢮⡻⣮⡳⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠙⢮⡻⣮⡳⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠙⢮⡻⣮⡳⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠙⢮⡱⣮⡳⣄⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠙⢮⡻⣮⡳⣄⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠙⢮⡻⣮⡳⣄⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠙⢮⡻⣮⠳⣄⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠙⢦⡻⣮⡳⣄
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠙⢮⠻⣦</code></pre><h3 id="Boundary-conditions"><a class="docs-heading-anchor" href="#Boundary-conditions">Boundary conditions</a><a id="Boundary-conditions-1"></a><a class="docs-heading-anchor-permalink" href="#Boundary-conditions" title="Permalink"></a></h3><p>In Ferrite constraints like Dirichlet boundary conditions are handled by a <code>ConstraintHandler</code>.</p><pre><code class="language-julia hljs">ch = ConstraintHandler(dh);</code></pre><p>Next we need to add constraints to <code>ch</code>. For this problem we define homogeneous Dirichlet boundary conditions on the whole boundary, i.e. the <code>union</code> of all the face sets on the boundary.</p><pre><code class="language-julia hljs">∂Ω = union(getfaceset.((grid, ), [&quot;left&quot;, &quot;right&quot;, &quot;top&quot;, &quot;bottom&quot;])...);</code></pre><p>Now we are set up to define our constraint. We specify which field the condition is for, and our combined face set <code>∂Ω</code>. The last argument is a function which takes the spatial coordinate <span>$x$</span> and the current time <span>$t$</span> and returns the prescribed value. In this case it is trivial – no matter what <span>$x$</span> and <span>$t$</span> we return <span>$0$</span>. When we have specified our constraint we <code>add!</code> it to <code>ch</code>.</p><pre><code class="language-julia hljs">dbc = Dirichlet(:u, ∂Ω, (x, t) -&gt; 0)
 add!(ch, dbc);</code></pre><p>We also need to <code>close!</code> and <code>update!</code> our boundary conditions. When we call <code>close!</code> the dofs which will be constrained by the boundary conditions are calculated and stored in our <code>ch</code> object. Since the boundary conditions are, in this case, independent of time we can <code>update!</code> them directly with e.g. <span>$t = 0$</span>.</p><pre><code class="language-julia hljs">close!(ch)
 update!(ch, 0.0);</code></pre><h3 id="Assembling-the-linear-system"><a class="docs-heading-anchor" href="#Assembling-the-linear-system">Assembling the linear system</a><a id="Assembling-the-linear-system-1"></a><a class="docs-heading-anchor-permalink" href="#Assembling-the-linear-system" title="Permalink"></a></h3><p>Now we have all the pieces needed to assemble the linear system, <span>$K u = f$</span>. We define a function, <code>doassemble</code> to do the assembly, which takes our <code>cellvalues</code>, the sparse matrix and our DofHandler as input arguments. The function returns the assembled stiffness matrix, and the force vector.</p><pre><code class="language-julia hljs">function doassemble(cellvalues::CellScalarValues{dim}, K::SparseMatrixCSC, dh::DofHandler) where {dim}</code></pre><p>We allocate the element stiffness matrix and element force vector just once before looping over all the cells instead of allocating them every time in the loop.</p><pre><code class="language-julia hljs">    n_basefuncs = getnbasefunctions(cellvalues)
     Ke = zeros(n_basefuncs, n_basefuncs)
@@ -61,11 +60,7 @@ dh = DofHandler(grid)
 push!(dh, :u, 1)
 close!(dh);
 
-K = create_sparsity_pattern(dh);
-
-using UnicodePlots
-fill!(K.nzval, 1.0)
-spy(K; height = 15)
+K = create_sparsity_pattern(dh)
 
 ch = ConstraintHandler(dh);
 
@@ -119,4 +114,4 @@ u = K \ f;
 
 vtk_grid(&quot;heat_equation&quot;, dh) do vtk
     vtk_point_data(vtk, dh, u)
-end</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../manual/export/">« Export</a><a class="docs-footer-nextpage" href="../postprocessing/">Postprocessing »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.12 on <span class="colophon-date" title="Thursday 17 February 2022 22:52">Thursday 17 February 2022</span>. Using Julia version 1.7.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+end</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../manual/export/">« Export</a><a class="docs-footer-nextpage" href="../postprocessing/">Postprocessing »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.12 on <span class="colophon-date" title="Thursday 17 February 2022 23:18">Thursday 17 February 2022</span>. Using Julia version 1.7.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
