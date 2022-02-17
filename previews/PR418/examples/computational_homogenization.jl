@@ -1,12 +1,8 @@
 using Ferrite, SparseArrays, LinearAlgebra
-using Test #hide
 
 using FerriteGmsh
+# grid = saved_file_to_grid("periodic-rve-coarse.msh")
 grid = saved_file_to_grid("periodic-rve.msh")
-gridc = saved_file_to_grid("periodic-rve-coarse.msh") #hide
-grid #hide
-
-grid = gridc; #hide
 
 dim = 2
 ip = Lagrange{dim, RefTetrahedron, 1}()
@@ -58,19 +54,18 @@ Ei = 10 * Em;
       SymmetricTensor{2,2}([0.0 0.5; 0.5 0.0]), # ε_12/ε_21 loading
 ];
 
-function doassemble!(cellvalues::CellVectorValues, K::SparseMatrixCSC, dh::DofHandler)
+function doassemble!(cellvalues::CellVectorValues, K::SparseMatrixCSC, dh::DofHandler, εᴹ)
 
     n_basefuncs = getnbasefunctions(cellvalues)
     ndpc = ndofs_per_cell(dh)
     Ke = zeros(ndpc, ndpc)
-    fe = zeros(ndpc, 3)
-    f = zeros(ndofs(dh), 3)
+    fe = zeros(ndpc, length(εᴹ))
+    f = zeros(ndofs(dh), length(εᴹ))
     assembler = start_assemble(K)
 
     for cell in CellIterator(dh)
-        #Elements in the "inclusions" cell set have 10x stiffness
-        E = cellid(cell) in getcellset(dh.grid, "inclusions") ? Ei : Em
 
+        E = cellid(cell) in getcellset(dh.grid, "inclusions") ? Ei : Em
         reinit!(cellvalues, cell)
         fill!(Ke, 0)
         fill!(fe, 0)
@@ -98,8 +93,8 @@ function doassemble!(cellvalues::CellVectorValues, K::SparseMatrixCSC, dh::DofHa
 end;
 
 rhs = (
-    dirichlet = doassemble!(cellvalues, K.dirichlet, dh),
-    periodic  = doassemble!(cellvalues, K.periodic,  dh),
+    dirichlet = doassemble!(cellvalues, K.dirichlet, dh, εᴹ),
+    periodic  = doassemble!(cellvalues, K.periodic,  dh, εᴹ),
 );
 
 rhsdata = (
@@ -202,14 +197,30 @@ E_periodic = SymmetricTensor{4,2}((i, j, k, l) -> begin
     end
 end);
 
-vm = 0.648 # Volume fraction for the matrix material
+function matrix_volume_fraction(grid, cellvalues)
+    V  = 0.0 # Total volume
+    Vm = 0.0 # Volume of the matrix
+    for c in CellIterator(grid)
+        reinit!(cellvalues, c)
+        is_matrix = !(cellid(c) in getcellset(grid, "inclusions"))
+        for qp in 1:getnquadpoints(cellvalues)
+            dΩ = getdetJdV(cellvalues, qp)
+            V += dΩ
+            if is_matrix
+                Vm += dΩ
+            end
+        end
+    end
+    return Vm / V
+end
+
+vm = matrix_volume_fraction(grid, cellvalues)
+
 E_voigt = vm * Em + (1-vm) * Ei
 E_reuss = inv(vm * inv(Em) + (1-vm) * inv(Ei));
 
-t = #hide
-(first ∘ eigvals).((E_reuss, E_periodic, E_dirichlet, E_voigt))
-@test issorted(t) #hide
-round.(t; digits = -8) #hide
+ev = (first ∘ eigvals).((E_reuss, E_periodic, E_dirichlet, E_voigt))
+round.(ev; digits=-8)
 
 chM = ConstraintHandler(dh)
 add!(chM, Dirichlet(:u, Set(1:getnnodes(grid)), (x, t) -> εᴹ[Int(t)] ⋅ x, [1, 2]))
@@ -218,13 +229,13 @@ uM = zeros(ndofs(dh))
 
 vtk_grid("homogenization", dh) do vtk
     for i in 1:3
-        #Compute macroscopic solution
+        # Compute macroscopic solution
         update!(chM, i)
         apply!(uM, chM)
-        #Dirichlet
+        # Dirichlet
         vtk_point_data(vtk, dh, uM + u.dirichlet[i], "_dirichlet_$i")
         vtk_point_data(vtk, projector, σ.dirichlet[i], "σvM_dirichlet_$i")
-        #Periodic
+        # Periodic
         vtk_point_data(vtk, dh, uM + u.periodic[i], "_periodic_$i")
         vtk_point_data(vtk, projector, σ.periodic[i], "σvM_periodic_$i")
     end
