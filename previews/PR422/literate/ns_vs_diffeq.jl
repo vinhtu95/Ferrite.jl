@@ -441,8 +441,7 @@ for (u_uc,t) in integrator
     update!(ch, t)
     u = copy(u_uc)
     apply!(u, ch)
-    #compress=false flag because otherwise each vtk file will be stored in memory
-    vtk_grid("vortex-street-$t.vtu", dh; compress=false) do vtk
+    vtk_grid("vortex-street-$t.vtu", dh) do vtk
         vtk_point_data(vtk,dh,u)
         vtk_save(vtk)
         pvd[t] = vtk

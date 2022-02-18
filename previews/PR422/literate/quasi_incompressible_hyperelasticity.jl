@@ -332,7 +332,7 @@ function solve(interpolation_u, interpolation_p)
         end;
 
         ## Save the solution fields
-        vtk_grid("hyperelasticity_incomp_mixed_$t.vtu", dh, compress=false) do vtkfile
+        vtk_grid("hyperelasticity_incomp_mixed_$t.vtu", dh) do vtkfile
             vtk_point_data(vtkfile, dh, w)
             vtk_save(vtkfile)
             pvd[t] = vtkfile
@@ -347,9 +347,10 @@ end;
 # We can now test the solution using the Taylor-Hood approximation
 quadratic = Lagrange{3, RefTetrahedron, 2}()
 linear = Lagrange{3, RefTetrahedron, 1}()
-vol_def = solve(quadratic, linear);
+vol_def = solve(quadratic, linear)
 
-# We can also check that the deformed volume is indeed close to 1 (as should be for a nearly incompressible material)
+# The deformed volume is indeed close to 1 (as should be for a nearly incompressible material).
+
 using Test                #src
 @test isapprox(vol_def, 1.0, atol=1E-3) #src
 
