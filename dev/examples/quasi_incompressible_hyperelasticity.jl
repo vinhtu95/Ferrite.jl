@@ -239,7 +239,7 @@ function solve(interpolation_u, interpolation_p)
         end;
 
         # Save the solution fields
-        vtk_grid("hyperelasticity_incomp_mixed_$t.vtu", dh, compress=false) do vtkfile
+        vtk_grid("hyperelasticity_incomp_mixed_$t.vtu", dh) do vtkfile
             vtk_point_data(vtkfile, dh, w)
             vtk_save(vtkfile)
             pvd[t] = vtkfile
@@ -253,7 +253,7 @@ end;
 
 quadratic = Lagrange{3, RefTetrahedron, 2}()
 linear = Lagrange{3, RefTetrahedron, 1}()
-vol_def = solve(quadratic, linear);
+vol_def = solve(quadratic, linear)
 
 # This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl
 
