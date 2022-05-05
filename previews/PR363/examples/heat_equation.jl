@@ -32,7 +32,7 @@ function doassemble(cellvalues::CellScalarValues{dim}, K::SparseMatrixCSC, dh::D
     f = zeros(ndofs(dh))
     assembler = start_assemble(K, f)
 
-    @inbounds for cell in CellIterator(dh)
+    for cell in CellIterator(dh)
 
         fill!(Ke, 0)
         fill!(fe, 0)
