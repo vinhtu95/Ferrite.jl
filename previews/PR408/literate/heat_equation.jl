@@ -1,11 +1,16 @@
 # # Heat Equation
 #
 # ![](heat_square.png)
+#
+# *Figure 1*: Temperature field on the unit square with an internal uniform heat source
+# solved with homogeneous Dirichlet boundary conditions on the boundary.
+#
 #-
 #md # !!! tip
 #md #     This example is also available as a Jupyter notebook:
-#md #     [`heat_equation.ipynb`](@__NBVIEWER_ROOT_URL__/examples/heat_equation.ipynb)
+#md #     [`heat_equation.ipynb`](@__NBVIEWER_ROOT_URL__/examples/heat_equation.ipynb).
 #-
+#
 # ## Introduction
 #
 # The heat equation is the "Hello, world!" equation of finite elements.
@@ -28,7 +33,7 @@
 # ```math
 # \int_{\Omega} \nabla \delta u \cdot \nabla u \ d\Omega = \int_{\Omega} \delta u \ d\Omega \quad \forall \delta u \in \mathbb{T},
 # ```
-# where $\mathbb{T}$ is a suitable test function space.
+# where $\delta u$ is a test function and $\mathbb{T}$ is a suitable test function space.
 #-
 # ## Commented Program
 #
@@ -69,15 +74,7 @@ close!(dh);
 # Now that we have distributed all our dofs we can create our tangent matrix,
 # using `create_sparsity_pattern`. This function returns a sparse matrix
 # with the correct elements stored.
-K = create_sparsity_pattern(dh);
-
-# We can inspect the pattern using the `spy` function from `UnicodePlots.jl`.
-# By default the stored values are set to $0$, so we first need to
-# fill the stored values, e.g. `K.nzval` with something meaningful.
-
-using UnicodePlots
-fill!(K.nzval, 1.0)
-spy(K; height = 15)
+K = create_sparsity_pattern(dh)
 
 # ### Boundary conditions
 # In Ferrite constraints like Dirichlet boundary conditions
@@ -135,7 +132,7 @@ function doassemble(cellvalues::CellScalarValues{dim}, K::SparseMatrixCSC, dh::D
     # over a `CellIterator`. The iterator caches some useful things for us, for example
     # the nodal coordinates for the cell, and the local degrees of freedom.
     #+
-    @inbounds for cell in CellIterator(dh)
+    for cell in CellIterator(dh)
         # Always remember to reset the element stiffness matrix and
         # force vector since we reuse them for all elements.
         #+
@@ -203,10 +200,10 @@ end
 using Test                        #src
 @test norm(u) ≈ 3.307743912641305 #src
 
-#md # ## [Plain Program](@id heat_equation-plain-program)
+#md # ## [Plain program](@id heat_equation-plain-program)
 #md #
-#md # Below follows a version of the program without any comments.
-#md # The file is also available here: [heat_equation.jl](heat_equation.jl)
+#md # Here follows a version of the program without any comments.
+#md # The file is also available here: [`heat_equation.jl`](heat_equation.jl).
 #md #
 #md # ```julia
 #md # @__CODE__
