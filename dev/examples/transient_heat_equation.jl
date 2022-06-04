@@ -85,7 +85,7 @@ function doassemble_M!(M::SparseMatrixCSC, cellvalues::CellScalarValues{dim}, dh
                 v  = shape_value(cellvalues, q_point, i)
                 for j in 1:n_basefuncs
                     u = shape_value(cellvalues, q_point, j)
-                    Me[i, j] += (v ⋅ u) * dΩ
+                    Me[i, j] += (v * u) * dΩ
                 end
             end
         end
