@@ -187,6 +187,12 @@ function close!(ch::ConstraintHandler)
     sort!(ch.acs, by = ac -> ac.constrained_dof)
 
     ch.closed[] = true
+
+    # Compute the prescribed values by calling update!: This should be cheap, and for the
+    # common case where constraints does not depend on time it is annoying and easy to
+    # forget to call this on the outside.
+    update!(ch, 0)
+
     return ch
 end
 
