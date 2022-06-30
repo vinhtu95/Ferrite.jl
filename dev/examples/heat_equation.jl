@@ -15,7 +15,12 @@ K = create_sparsity_pattern(dh)
 
 ch = ConstraintHandler(dh);
 
-∂Ω = union(getfaceset.((grid, ), ["left", "right", "top", "bottom"])...);
+∂Ω = union(
+    getfaceset(grid, "left"),
+    getfaceset(grid, "right"),
+    getfaceset(grid, "top"),
+    getfaceset(grid, "bottom"),
+);
 
 dbc = Dirichlet(:u, ∂Ω, (x, t) -> 0)
 add!(ch, dbc);
@@ -23,42 +28,54 @@ add!(ch, dbc);
 close!(ch)
 update!(ch, 0.0);
 
-function doassemble(cellvalues::CellScalarValues{dim}, K::SparseMatrixCSC, dh::DofHandler) where {dim}
+function assemble_element!(Ke::Matrix, fe::Vector, cellvalues::CellScalarValues)
+    n_basefuncs = getnbasefunctions(cellvalues)
+    # Reset to 0
+    fill!(Ke, 0)
+    fill!(fe, 0)
+    # Loop over quadrature points
+    for q_point in 1:getnquadpoints(cellvalues)
+        # Get the quadrature weight
+        dΩ = getdetJdV(cellvalues, q_point)
+        # Loop over test shape functions
+        for i in 1:n_basefuncs
+            δu  = shape_value(cellvalues, q_point, i)
+            ∇δu = shape_gradient(cellvalues, q_point, i)
+            # Add contribution to fe
+            fe[i] += δu * dΩ
+            # Loop over trial shape functions
+            for j in 1:n_basefuncs
+                ∇u = shape_gradient(cellvalues, q_point, j)
+                # Add contribution to Ke
+                Ke[i, j] += (∇δu ⋅ ∇u) * dΩ
+            end
+        end
+    end
+    return Ke, fe
+end
 
+function assemble_global(cellvalues::CellScalarValues, K::SparseMatrixCSC, dh::DofHandler)
+    # Allocate the element stiffness matrix and element force vector
     n_basefuncs = getnbasefunctions(cellvalues)
     Ke = zeros(n_basefuncs, n_basefuncs)
     fe = zeros(n_basefuncs)
-
+    # Allocate global force vector f
     f = zeros(ndofs(dh))
+    # Create an assembler
     assembler = start_assemble(K, f)
-
+    # Loop over all cels
     for cell in CellIterator(dh)
-
-        fill!(Ke, 0)
-        fill!(fe, 0)
-
+        # Reinitialize cellvalues for this cell
         reinit!(cellvalues, cell)
-
-        for q_point in 1:getnquadpoints(cellvalues)
-            dΩ = getdetJdV(cellvalues, q_point)
-
-            for i in 1:n_basefuncs
-                δu  = shape_value(cellvalues, q_point, i)
-                ∇δu = shape_gradient(cellvalues, q_point, i)
-                fe[i] += δu * dΩ
-                for j in 1:n_basefuncs
-                    ∇u = shape_gradient(cellvalues, q_point, j)
-                    Ke[i, j] += (∇δu ⋅ ∇u) * dΩ
-                end
-            end
-        end
-
-        assemble!(assembler, celldofs(cell), fe, Ke)
+        # Compute element contribution
+        assemble_element!(Ke, fe, cellvalues)
+        # Assemble Ke and fe into K and f
+        assemble!(assembler, celldofs(cell), Ke, fe)
     end
     return K, f
 end
 
-K, f = doassemble(cellvalues, K, dh);
+K, f = assemble_global(cellvalues, K, dh);
 
 apply!(K, f, ch)
 u = K \ f;
