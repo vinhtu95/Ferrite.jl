@@ -1,5 +1,4 @@
-using Ferrite, Tensors, TimerOutputs, ProgressMeter
-import KrylovMethods, IterativeSolvers
+using Ferrite, Tensors, TimerOutputs, ProgressMeter, IterativeSolvers
 
 struct NeoHooke
     μ::Float64
@@ -18,18 +17,18 @@ function constitutive_driver(C, mp::NeoHooke)
     # Compute all derivatives in one function call
     ∂²Ψ∂C², ∂Ψ∂C = Tensors.hessian(y -> Ψ(y, mp), C, :all)
     S = 2.0 * ∂Ψ∂C
-    ∂S∂C = 4.0 * ∂²Ψ∂C²
+    ∂S∂C = 2.0 * ∂²Ψ∂C²
     return S, ∂S∂C
 end;
 
-function assemble_element!(ke, ge, cell, cv, fv, mp, ue)
+function assemble_element!(ke, ge, cell, cv, fv, mp, ue, ΓN)
     # Reinitialize cell values, and reset output arrays
     reinit!(cv, cell)
     fill!(ke, 0.0)
     fill!(ge, 0.0)
 
     b = Vec{3}((0.0, -0.5, 0.0)) # Body force
-    t = Vec{3}((0.1, 0.0, 0.0)) # Traction
+    tn = 0.1 # Traction (to be scaled with surface normal)
     ndofs = getnbasefunctions(cv)
 
     for qp in 1:getnquadpoints(cv)
@@ -42,11 +41,11 @@ function assemble_element!(ke, ge, cell, cv, fv, mp, ue)
         S, ∂S∂C = constitutive_driver(C, mp)
         P = F ⋅ S
         I = one(S)
-        ∂P∂F = otimesu(F, I) ⊡ ∂S∂C ⊡ otimesu(F', I) + otimesu(I, S)
+        ∂P∂F =  otimesu(I, S) + 2 * otimesu(F, I) ⊡ ∂S∂C ⊡ otimesu(F', I)
 
         # Loop over test functions
         for i in 1:ndofs
-            # Test function + gradient
+            # Test function and gradient
             δui = shape_value(cv, qp, i)
             ∇δui = shape_gradient(cv, qp, i)
             # Add contribution to the residual from this test function
@@ -63,9 +62,10 @@ function assemble_element!(ke, ge, cell, cv, fv, mp, ue)
 
     # Surface integral for the traction
     for face in 1:nfaces(cell)
-        if onboundary(cell, face)
+        if (cellid(cell), face) in ΓN
             reinit!(fv, cell, face)
             for q_point in 1:getnquadpoints(fv)
+                t = tn * getnormal(fv, q_point)
                 dΓ = getdetJdV(fv, q_point)
                 for i in 1:ndofs
                     δui = shape_value(fv, q_point, i)
@@ -76,7 +76,7 @@ function assemble_element!(ke, ge, cell, cv, fv, mp, ue)
     end
 end;
 
-function assemble_global!(K, f, dh, cv, fv, mp, u)
+function assemble_global!(K, f, dh, cv, fv, mp, u, ΓN)
     n = ndofs_per_cell(dh)
     ke = zeros(n, n)
     ge = zeros(n)
@@ -88,7 +88,7 @@ function assemble_global!(K, f, dh, cv, fv, mp, u)
     @timeit "assemble" for cell in CellIterator(dh)
         global_dofs = celldofs(cell)
         ue = u[global_dofs] # element dofs
-        @timeit "element assemble" assemble_element!(ke, ge, cell, cv, fv, mp, ue)
+        @timeit "element assemble" assemble_element!(ke, ge, cell, cv, fv, mp, ue, ΓN)
         assemble!(assembler, global_dofs, ge, ke)
     end
 end;
@@ -141,6 +141,14 @@ function solve()
     t = 0.5
     Ferrite.update!(dbcs, t)
 
+    # Neumann part of the boundary
+    ΓN = union(
+        getfaceset(grid, "top"),
+        getfaceset(grid, "bottom"),
+        getfaceset(grid, "front"),
+        getfaceset(grid, "back"),
+    )
+
     # Pre-allocation of vectors for the solution and Newton increments
     _ndofs = ndofs(dh)
     un = zeros(_ndofs) # previous solution vector
@@ -153,28 +161,26 @@ function solve()
     K = create_sparsity_pattern(dh)
     g = zeros(_ndofs)
 
-
     # Perform Newton iterations
     newton_itr = -1
     NEWTON_TOL = 1e-8
+    NEWTON_MAXITER = 30
     prog = ProgressMeter.ProgressThresh(NEWTON_TOL, "Solving:")
 
     while true; newton_itr += 1
         u .= un .+ Δu # Current guess
-        assemble_global!(K, g, dh, cv, fv, mp, u)
+        assemble_global!(K, g, dh, cv, fv, mp, u, ΓN)
         normg = norm(g[Ferrite.free_dofs(dbcs)])
         apply_zero!(K, g, dbcs)
         ProgressMeter.update!(prog, normg; showvalues = [(:iter, newton_itr)])
 
         if normg < NEWTON_TOL
             break
-        elseif newton_itr > 30
+        elseif newton_itr > NEWTON_MAXITER
             error("Reached maximum Newton iterations, aborting")
         end
 
-        # Compute increment using cg! from IterativeSolvers.jl
-        @timeit "linear solve (KrylovMethods.cg)" ΔΔu′, flag, relres, iter, resvec = KrylovMethods.cg(K, g; maxIter = 1000)
-        @assert flag == 0
+        # Compute increment using conjugate gradients
         @timeit "linear solve (IterativeSolvers.cg!)" IterativeSolvers.cg!(ΔΔu, K, g; maxiter=1000)
 
         apply_zero!(ΔΔu, dbcs)
