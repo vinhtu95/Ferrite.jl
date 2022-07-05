@@ -33,11 +33,11 @@
 # where ``\mathbf{u}`` is the unknown displacement field, ``\mathbf{b}`` is the body force acting
 # on the reference domain, ``\mathbf{t}`` is the traction acting on the Neumann part of the reference
 # domain's boundary, and where ``\mathbb{U}`` and ``\mathbb{U}^0`` are suitable trial and test sets.
-# ``\Omega`` denotes the reference domain (sometimes also called initial or material domain).
+# ``\Omega`` denotes the reference (sometimes also called *initial* or *material*) domain.
 # Gradients are defined with respect to the reference domain, here denoted with  an ``\mathbf{X}``.
 # Formally this is expressed as ``(\nabla_{\mathbf{X}} \bullet)_{ij} := \frac{\partial(\bullet)_i}{\partial X_j}``.
 # Note that for large deformation problems it is also possibile that gradients and integrals
-# are defined on the deformed domain (sometimes also called the current or spatial domain), depending
+# are defined on the deformed (sometimes also called *current* or *spatial*) domain, depending
 # on the specific formulation.
 #
 # The specific problem we will solve in this example is the cube from Figure 1: On one side
