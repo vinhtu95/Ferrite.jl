@@ -45,14 +45,21 @@
 # displacement with a homogenous Dirichlet boundary condition, and on the remaining four
 # sides we apply a traction in the normal direction of the surface. In addition, a body
 # force is applied in one direction.
+#
+# In addition to Ferrite.jl and Tensors.jl, this examples uses
+# [TimerOutputs.jl](https://github.com/KristofferC/TimerOutputs.jl) for timing the program
+# and print a summary at the end,
+# [ProgressMeter.jl](https://github.com/timholy/ProgressMeter.jl) for showing a simple
+# progress bar, and
+# [IterativeSolvers](https://github.com/JuliaLinearAlgebra/IterativeSolvers.jl) for solving
+# the linear system using conjugate gradients.
 
-using Ferrite, Tensors, TimerOutputs, ProgressMeter
-import IterativeSolvers
+using Ferrite, Tensors, TimerOutputs, ProgressMeter, IterativeSolvers
 
 # ## Hyperelastic material model
 #
 # The stress can be derived from an energy potential, defined in
-# terms of the right Cauchy-Green tensor ``\mathbf{C} = \mathbf{F}^{\mathrm{T}} \mathbf{F}``,
+# terms of the right Cauchy-Green tensor ``\mathbf{C} = \mathbf{F}^{\mathrm{T}} \cdot \mathbf{F}``,
 # where ``\mathbf{F} = \mathbf{I} + \nabla_{\mathbf{X}} \mathbf{u}`` is the deformation gradient.
 # We shall use a neo-Hookean model, where the potential can be written as
 #
@@ -71,7 +78,7 @@ import IterativeSolvers
 # and the tangent of ``\mathbf{S}`` as
 #
 # ```math
-# \frac{\partial \mathbf{S}}{\partial \mathbf{C}} = 4 \frac{\partial \Psi}{\partial \mathbf{C}}.
+# \frac{\partial \mathbf{S}}{\partial \mathbf{C}} = 2 \frac{\partial^2 \Psi}{\partial \mathbf{C}^2}.
 # ```
 #
 # Finally, for the finite element problem we need ``\mathbf{P}`` and
@@ -81,31 +88,34 @@ import IterativeSolvers
 # ```math
 # \begin{align*}
 # \mathbf{P} &= \mathbf{F} \cdot \mathbf{S},\\
-# \frac{\partial \mathbf{P}}{\partial \mathbf{F}} &= [\mathbf{F} \bar{\otimes} \mathbf{I}] :
-# \frac{\partial \mathbf{S}}{\partial \mathbf{C}} : [\mathbf{F}^\mathrm{T} \bar{\otimes} \mathbf{I}]
-# + \mathbf{I} \bar{\otimes} \mathbf{S}.
+# \frac{\partial \mathbf{P}}{\partial \mathbf{F}} &= \mathbf{I} \bar{\otimes} \mathbf{S} + 2\, \mathbf{F} \bar{\otimes} \mathbf{I} :
+# \frac{\partial \mathbf{S}}{\partial \mathbf{C}} : \mathbf{F}^\mathrm{T} \bar{\otimes} \mathbf{I}.
 # \end{align*}
 # ```
-#
-# ```@raw html
-# <details class="admonition collapsible" open="">
-# <summary class="admonition-header">
-# Derivation of <span>$\partial \mathbf{P} / \partial \mathbf{F}$</span>
-# </summary>
-# <div class="admonition-body">
-# ```
-# Using the product rule, and the chain rule, we obtain:
+
+#md # ```@raw html
+#md # <details class="admonition collapsible">
+#md # <summary class="admonition-header">
+#md # Derivation of <span>$\partial \mathbf{P} / \partial \mathbf{F}$</span>
+#md # </summary>
+#md # <div class="admonition-body">
+#md # ```
+#nb # ### Derivation of ``\partial \mathbf{P} / \partial \mathbf{F}``
+# Using the product rule, the chain rule, and the relations ``\mathbf{P} = \mathbf{F} \cdot
+# \mathbf{S}`` and ``\mathbf{C} = \mathbf{F}^\mathrm{T} \cdot \mathbf{F}``, we obtain the
+# following:
 # ```math
 # \begin{aligned}
 # \frac{\partial \mathbf{P}}{\partial \mathbf{F}} &=
 # \frac{\partial P_{ij}}{\partial F_{kl}} \\ &=
-# \frac{\partial F_{im}S_{mj}}{\partial F_{kl}} \\ &=
+# \frac{\partial (F_{im}S_{mj})}{\partial F_{kl}} \\ &=
 # \frac{\partial F_{im}}{\partial F_{kl}}S_{mj} +
 # F_{im}\frac{\partial S_{mj}}{\partial F_{kl}} \\ &=
 # \delta_{ik}\delta_{ml} S_{mj} +
 # F_{im}\frac{\partial S_{mj}}{\partial C_{no}}\frac{\partial C_{no}}{\partial F_{kl}} \\ &=
 # \delta_{ik}S_{lj} +
-# F_{im}\frac{\partial S_{mj}}{\partial C_{no}}\frac{\partial F^\mathrm{T}_{np}F_{po}}{\partial F_{kl}} \\ &=
+# F_{im}\frac{\partial S_{mj}}{\partial C_{no}}
+# \frac{\partial (F^\mathrm{T}_{np}F_{po})}{\partial F_{kl}} \\ &=
 # \delta_{ik}S^\mathrm{T}_{jl} +
 # F_{im}\delta_{jq}\frac{\partial S_{mq}}{\partial C_{no}}
 # \left(
@@ -114,40 +124,28 @@ import IterativeSolvers
 # \right) \\ &=
 # \delta_{ik}S_{jl} +
 # F_{im}\delta_{jq}\frac{\partial S_{mq}}{\partial C_{no}}
-# \left(
-# \delta_{nl} \delta_{pk} F_{po} +
-# F^\mathrm{T}_{np}\delta_{pk} \delta_{ol}
-# \right) \\ &=
-# \delta_{ik}S_{jl} +
+# (\delta_{nl} \delta_{pk} F_{po} + F^\mathrm{T}_{np}\delta_{pk} \delta_{ol}) \\ &=
+# \delta_{ik}S_{lj} +
 # F_{im}\delta_{jq}\frac{\partial S_{mq}}{\partial C_{no}}
-# \left(
-# F^\mathrm{T}_{ok} \delta_{nl} +
-# F^\mathrm{T}_{nk} \delta_{ol}
-# \right) \\ &=
+# (F^\mathrm{T}_{ok} \delta_{nl} + F^\mathrm{T}_{nk} \delta_{ol}) \\ &=
 # \delta_{ik}S_{jl} +
-# F_{im}\delta_{jq}\frac{\partial S_{mq}}{\partial C_{no}}
-# \left(
-# F^\mathrm{T}_{nk} \delta_{ol} +
-# F^\mathrm{T}_{nk} \delta_{ol}
-# \right) \\ &=
-# \delta_{ik}S_{jl} +
-# 2 (F_{im}\delta_{jq})\frac{\partial S_{mq}}{\partial C_{no}}
-# (F^\mathrm{T}_{nk} \delta_{ol}) \\ &=
+# 2\, F_{im}\delta_{jq} \frac{\partial S_{mq}}{\partial C_{no}}
+# F^\mathrm{T}_{nk} \delta_{ol} \\ &=
 # \mathbf{I}\bar{\otimes}\mathbf{S} +
-# 2 (\mathbf{F}\bar{\otimes}\mathbf{I}) : \frac{\partial \mathbf{S}}{\partial \mathbf{C}}
-# : (\mathbf{F}^\mathrm{T} \bar{\otimes} \mathbf{I})
+# 2\, \mathbf{F}\bar{\otimes}\mathbf{I} : \frac{\partial \mathbf{S}}{\partial \mathbf{C}}
+# : \mathbf{F}^\mathrm{T} \bar{\otimes} \mathbf{I},
 # \end{aligned}
 # ```
-# This gives us the first term ``\delta_{ik}S_{lj} = \delta_{ik}S_{jl} = \mathbf{I} \bar{\otimes} \mathbf{S}``,
-# since ``S`` is symmetric.
-# ```@raw html
-# </div></details>
-# ```
-#
+# where we used the fact that ``\mathbf{S}`` is symmetric (``S_{lj} = S_{jl}``) and that
+# ``\frac{\partial \mathbf{S}}{\partial \mathbf{C}}`` is *minor* symmetric (``\frac{\partial
+# S_{mq}}{\partial C_{no}} = \frac{\partial S_{mq}}{\partial C_{on}}``).
+#md # ```@raw html
+#md # </div></details>
+#md # ```
+
+# ### Implementation of material model using automatic differentiation
 # We can implement the material model as follows, where we utilize automatic differentiation
 # for the stress and the tangent, and thus only define the potential:
-
-using Tensors
 
 struct NeoHooke
     μ::Float64
@@ -166,7 +164,7 @@ function constitutive_driver(C, mp::NeoHooke)
     ## Compute all derivatives in one function call
     ∂²Ψ∂C², ∂Ψ∂C = Tensors.hessian(y -> Ψ(y, mp), C, :all)
     S = 2.0 * ∂Ψ∂C
-    ∂S∂C = 4.0 * ∂²Ψ∂C²
+    ∂S∂C = 2.0 * ∂²Ψ∂C²
     return S, ∂S∂C
 end;
 
@@ -240,7 +238,7 @@ function assemble_element!(ke, ge, cell, cv, fv, mp, ue, ΓN)
         S, ∂S∂C = constitutive_driver(C, mp)
         P = F ⋅ S
         I = one(S)
-        ∂P∂F = otimesu(F, I) ⊡ ∂S∂C ⊡ otimesu(F', I) + otimesu(I, S)
+        ∂P∂F =  otimesu(I, S) + 2 * otimesu(F, I) ⊡ ∂S∂C ⊡ otimesu(F', I)
 
         ## Loop over test functions
         for i in 1:ndofs

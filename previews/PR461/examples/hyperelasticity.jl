@@ -1,7 +1,4 @@
-using Ferrite, Tensors, TimerOutputs, ProgressMeter
-import IterativeSolvers
-
-using Tensors
+using Ferrite, Tensors, TimerOutputs, ProgressMeter, IterativeSolvers
 
 struct NeoHooke
     μ::Float64
@@ -20,7 +17,7 @@ function constitutive_driver(C, mp::NeoHooke)
     # Compute all derivatives in one function call
     ∂²Ψ∂C², ∂Ψ∂C = Tensors.hessian(y -> Ψ(y, mp), C, :all)
     S = 2.0 * ∂Ψ∂C
-    ∂S∂C = 4.0 * ∂²Ψ∂C²
+    ∂S∂C = 2.0 * ∂²Ψ∂C²
     return S, ∂S∂C
 end;
 
@@ -44,7 +41,7 @@ function assemble_element!(ke, ge, cell, cv, fv, mp, ue, ΓN)
         S, ∂S∂C = constitutive_driver(C, mp)
         P = F ⋅ S
         I = one(S)
-        ∂P∂F = otimesu(F, I) ⊡ ∂S∂C ⊡ otimesu(F', I) + otimesu(I, S)
+        ∂P∂F =  otimesu(I, S) + 2 * otimesu(F, I) ⊡ ∂S∂C ⊡ otimesu(F', I)
 
         # Loop over test functions
         for i in 1:ndofs
