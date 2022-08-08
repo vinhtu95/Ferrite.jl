@@ -235,9 +235,9 @@ function symmetrize_lower!(K)
 end;
 
 function assemble_neumann!(r, dh, faceset, facevalues, t)
-    nu = getnbasefunctions(facevalues)     
-    re = zeros(nu)                      # element residual vector
-    for face in BoundaryFaceIterator(dh, faceset)
+    n_basefuncs = getnbasefunctions(facevalues)     
+    re = zeros(n_basefuncs)                      # element residual vector
+    for face in Ferrite.BoundaryFaceIterator(dh, faceset)
         ## Add traction as a negative contribution to the element residual `re`:
         reinit!(facevalues, face)
         fill!(re, 0)
@@ -248,7 +248,7 @@ function assemble_neumann!(r, dh, faceset, facevalues, t)
                 re[i] -= (δu ⋅ t) * dΓ
             end
         end
-        assemble!(r, re, celldofs(face))
+        assemble!(r, celldofs(face), re)
     end
     return r
 end
@@ -297,13 +297,13 @@ function solve()
 
     ## Newton-Raphson loop
     NEWTON_TOL = 1 # 1 N
-    print("\n Starting Netwon iterations:\n")
+    #print("\n Starting Netwon iterations:\n")
 
     for timestep in 1:n_timesteps
         t = timestep # actual time (used for evaluating d-bndc)
         traction = Vec((0.0, 0.0, traction_magnitude[timestep]))
         newton_itr = -1
-        print("\n Time step @time = $timestep:\n")
+        #print("\n Time step @time = $timestep:\n")
         update!(dbcs, t) # evaluates the D-bndc at time t
         apply!(u, dbcs)  # set the prescribed values in the solution vector
 
@@ -314,10 +314,10 @@ function solve()
                 break
             end
             K, r = doassemble(cellvalues, K, dh, material, u, states, states_old);
-            assemble_neumann!(r, dh, faceset, facevalues, traction)
+            assemble_neumann!(r, dh, getfaceset(grid, "right"), facevalues, traction)
             norm_r = norm(r[Ferrite.free_dofs(dbcs)])
 
-            print("Iteration: $newton_itr \tresidual: $(@sprintf("%.8f", norm_r))\n")
+            #print("Iteration: $newton_itr \tresidual: $(@sprintf("%.8f", norm_r))\n")
             if norm_r < NEWTON_TOL
                 break
             end
