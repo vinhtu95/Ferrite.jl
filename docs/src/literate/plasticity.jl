@@ -176,9 +176,8 @@ end;
 #
 # * Residual vector `r`
 # * Tangent stiffness `K`
-function doassemble(cellvalues::CellVectorValues{dim},
-                    facevalues::FaceVectorValues{dim}, K::SparseMatrixCSC, grid::Grid,
-                    dh::DofHandler, material::J2Plasticity, u, states, states_old, t) where {dim}
+function doassemble(cellvalues::CellVectorValues, K::SparseMatrixCSC,
+                    dh::DofHandler, material::J2Plasticity, u, states, states_old)
     r = zeros(ndofs(dh))
     assembler = start_assemble(K, r)
     nu = getnbasefunctions(cellvalues)
@@ -192,8 +191,7 @@ function doassemble(cellvalues::CellVectorValues{dim},
         ue = u[eldofs]
         state = @view states[:, i]
         state_old = @view states_old[:, i]
-        assemble_cell!(ke, re, cell, cellvalues, facevalues, grid, material,
-                       ue, state, state_old, t)
+        assemble_cell!(ke, re, cell, cellvalues, material, ue, state, state_old)
         assemble!(assembler, eldofs, re, ke)
     end
     return K, r
@@ -204,8 +202,8 @@ end
 #md #     Due to symmetry, we only compute the lower half of the tangent
 #md #     and then symmetrize it.
 #md #
-function assemble_cell!(Ke, re, cell, cellvalues, facevalues, grid, material,
-                        ue, state, state_old, t)
+function assemble_cell!(Ke, re, cell, cellvalues, material,
+                        ue, state, state_old)
     n_basefuncs = getnbasefunctions(cellvalues)
     reinit!(cellvalues, cell)
 
@@ -225,21 +223,6 @@ function assemble_cell!(Ke, re, cell, cellvalues, facevalues, grid, material,
         end
     end
     symmetrize_lower!(Ke)
-
-    ## Add traction as a negative contribution to the element residual `re`:
-    for face in 1:nfaces(cell)
-        if onboundary(cell, face) && (cellid(cell), face) ∈ getfaceset(grid, "right")
-            reinit!(facevalues, cell, face)
-            for q_point in 1:getnquadpoints(facevalues)
-                dΓ = getdetJdV(facevalues, q_point)
-                for i in 1:n_basefuncs
-                    δu = shape_value(facevalues, q_point, i)
-                    re[i] -= (δu ⋅ t) * dΓ
-                end
-            end
-        end
-    end
-
 end
 
 # Helper function to symmetrize the material tangent
@@ -250,6 +233,25 @@ function symmetrize_lower!(K)
         end
     end
 end;
+
+function assemble_neumann!(r, dh, faceset, facevalues, t)
+    nu = getnbasefunctions(facevalues)     
+    re = zeros(nu)                      # element residual vector
+    for face in BoundaryFaceIterator(dh, faceset)
+        ## Add traction as a negative contribution to the element residual `re`:
+        reinit!(facevalues, face)
+        fill!(re, 0)
+        for q_point in 1:getnquadpoints(facevalues)
+            dΓ = getdetJdV(facevalues, q_point)
+            for i in 1:n_basefuncs
+                δu = shape_value(facevalues, q_point, i)
+                re[i] -= (δu ⋅ t) * dΓ
+            end
+        end
+        assemble!(r, re, celldofs(face))
+    end
+    return r
+end
 
 # Define a function which solves the FE-problem.
 function solve()
@@ -311,8 +313,8 @@ function solve()
                 error("Reached maximum Newton iterations, aborting")
                 break
             end
-            K, r = doassemble(cellvalues, facevalues, K, grid, dh, material, u,
-                             states, states_old, traction);
+            K, r = doassemble(cellvalues, K, dh, material, u, states, states_old);
+            assemble_neumann!(r, dh, faceset, facevalues, traction)
             norm_r = norm(r[Ferrite.free_dofs(dbcs)])
 
             print("Iteration: $newton_itr \tresidual: $(@sprintf("%.8f", norm_r))\n")
