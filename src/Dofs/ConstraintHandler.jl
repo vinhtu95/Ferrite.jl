@@ -56,6 +56,11 @@ struct AffineConstraint{T}
     b::T # inhomogeneity
 end
 
+struct IdentityHashInt
+    i::Int
+end
+Base.hash(m::IdentityHashInt, h::UInt) = UInt64(m.i)
+
 """
     ConstraintHandler
 
@@ -65,6 +70,7 @@ struct ConstraintHandler{DH<:AbstractDofHandler,T}
     dbcs::Vector{Dirichlet}
     acs::Vector{AffineConstraint}
     prescribed_dofs::Vector{Int}
+    prescribed_dofs_set::Set{IdentityHashInt}
     free_dofs::Vector{Int}
     inhomogeneities::Vector{T}
     dofmapping::Dict{Int,Int} # global dof -> index into dofs and inhomogeneities
@@ -75,7 +81,7 @@ end
 
 function ConstraintHandler(dh::AbstractDofHandler)
     @assert isclosed(dh)
-    ConstraintHandler(Dirichlet[], AffineConstraint[], Int[], Int[], Float64[], Dict{Int,Int}(), BCValues{Float64}[], dh, ScalarWrapper(false))
+    ConstraintHandler(Dirichlet[], AffineConstraint[], Int[], Set{IdentityHashInt}(), Int[], Float64[], Dict{Int,Int}(), BCValues{Float64}[], dh, ScalarWrapper(false))
 end
 
 """
@@ -176,8 +182,12 @@ function close!(ch::ConstraintHandler)
 
     copy!(ch.free_dofs, setdiff(1:ndofs(ch.dh), ch.prescribed_dofs))
 
+    sizehint!(ch.prescribed_dofs_set, length(ch.prescribed_dofs))
+    sizehint!(ch.dofmapping, length(ch.prescribed_dofs))
+
     for i in 1:length(ch.prescribed_dofs)
         ch.dofmapping[ch.prescribed_dofs[i]] = i
+        push!(ch.prescribed_dofs_set, IdentityHashInt(ch.prescribed_dofs[i]))
     end
 
     # TODO:
@@ -536,13 +546,7 @@ function apply_zero!(K::Union{SparseMatrixCSC,Symmetric}, f::AbstractVector, ch:
     apply!(K, f, ch, true)
 end
 
-@enumx ApplyStrategy Transpose Inplace
-# For backwards compatibility
-const APPLY_TRANSPOSE = ApplyStrategy.Transpose
-const APPLY_INPLACE = ApplyStrategy.Inplace
-
-function apply!(KK::Union{SparseMatrixCSC,Symmetric}, f::AbstractVector, ch::ConstraintHandler, applyzero::Bool=false;
-                strategy::ApplyStrategy.T=ApplyStrategy.Transpose)
+function apply!(KK::Union{SparseMatrixCSC,Symmetric}, f::AbstractVector, ch::ConstraintHandler, applyzero::Bool=false)
     K = isa(KK, Symmetric) ? KK.data : KK
     @assert length(f) == 0 || length(f) == size(K, 1)
     @boundscheck checkbounds(K, ch.prescribed_dofs, ch.prescribed_dofs)
@@ -568,16 +572,7 @@ function apply!(KK::Union{SparseMatrixCSC,Symmetric}, f::AbstractVector, ch::Con
 
     # Remove constrained dofs from the matrix
     zero_out_columns!(K, ch.prescribed_dofs)
-    if strategy === ApplyStrategy.Transpose
-        K′ = copy(K)
-        transpose!(K′, K)
-        zero_out_columns!(K′, ch.prescribed_dofs)
-        transpose!(K, K′)
-    elseif strategy === ApplyStrategy.Inplace
-        K[ch.prescribed_dofs, :] .= 0
-    else
-        error("Unknown apply strategy")
-    end
+    zero_out_rows!(K, ch.prescribed_dofs_set)
 
     # Add meandiag to constraint dofs
     @inbounds for i in 1:length(ch.inhomogeneities)
@@ -771,6 +766,16 @@ function zero_out_columns!(K, dofs::Vector{Int}) # can be removed in 0.7 with #2
     end
 end
 
+function zero_out_rows!(K, rows)
+    rowval = K.rowval
+    nzval = K.nzval
+
+    for i in 1:length(rowval)
+        if IdentityHashInt(rowval[i]) in rows
+            nzval[i] = 0.0
+        end
+    end
+end
 
 function meandiag(K::AbstractMatrix)
     z = zero(eltype(K))

@@ -126,7 +126,6 @@ export
     apply_zero!,
     add!,
     free_dofs,
-    ApplyStrategy,
 
 # iterators
     CellIterator,
